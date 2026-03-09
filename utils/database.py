@@ -521,3 +521,225 @@ def get_obras_por_cliente(cliente_id):
     cur.close()
     conn.close()
     return obras
+
+# ================================================
+# CONTRATOS
+# ================================================
+
+def generar_folio_contrato():
+    """Genera el siguiente folio de contrato"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_contrato()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def get_cotizaciones_aprobadas():
+    """Retorna cotizaciones aprobadas sin contrato"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT c.*, cl.razon_social as cliente_nombre
+        FROM crm_cotizaciones c
+        JOIN crm_clientes cl ON c.cliente_id = cl.id
+        WHERE c.estatus = 'aprobada'
+        AND c.id NOT IN (
+            SELECT cotizacion_id FROM ops_contratos
+            WHERE cotizacion_id IS NOT NULL
+        )
+        ORDER BY c.created_at DESC
+    """)
+    cotizaciones = cur.fetchall()
+    cur.close()
+    conn.close()
+    return cotizaciones
+
+
+def crear_contrato(datos, items):
+    """Crea un contrato con sus items"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO ops_contratos
+            (folio, cotizacion_id, obra_id, cliente_id, tipo_contrato, estatus,
+             fecha_contrato, fecha_inicio, fecha_fin, dias_renta,
+             subtotal, monto_flete, iva, monto_total,
+             anticipo_porcentaje, anticipo_requerido, anticipo_pagado,
+             anticipo_referencia, anticipo_fecha_pago, anticipo_estatus,
+             pagare_numero, pagare_monto, pagare_firmante,
+             pagare_fecha_vencimiento, pagare_firmado,
+             contrato_origen_id, notas)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos.get('cotizacion_id'),
+            datos.get('obra_id'),
+            datos['cliente_id'],
+            datos['tipo_contrato'],
+            datos['estatus'],
+            datos['fecha_contrato'],
+            datos['fecha_inicio'],
+            datos['fecha_fin'],
+            datos['dias_renta'],
+            datos['subtotal'],
+            datos['monto_flete'],
+            datos['iva'],
+            datos['monto_total'],
+            datos['anticipo_porcentaje'],
+            datos['anticipo_requerido'],
+            datos['anticipo_pagado'],
+            datos.get('anticipo_referencia'),
+            datos.get('anticipo_fecha_pago'),
+            datos['anticipo_estatus'],
+            datos.get('pagare_numero'),
+            datos['pagare_monto'],
+            datos.get('pagare_firmante'),
+            datos.get('pagare_fecha_vencimiento'),
+            datos['pagare_firmado'],
+            datos.get('contrato_origen_id'),
+            datos.get('notas')
+        ))
+        contrato_id = cur.fetchone()[0]
+
+        for item in items:
+            cur.execute("""
+                INSERT INTO ops_contrato_items
+                (contrato_id, producto_id, cantidad, precio_unitario, subtotal)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                contrato_id,
+                item['producto_id'],
+                item['cantidad'],
+                item['precio_unitario'],
+                item['subtotal']
+            ))
+
+        # Actualizar estatus cotización a 'en_revision'
+        if datos.get('cotizacion_id'):
+            cur.execute("""
+                UPDATE crm_cotizaciones
+                SET estatus = 'en_revision', updated_at = NOW()
+                WHERE id = %s
+            """, (datos['cotizacion_id'],))
+
+        conn.commit()
+        return contrato_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_contratos(estatus=None):
+    """Retorna lista de contratos"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    query = """
+        SELECT ct.*, cl.razon_social as cliente_nombre,
+               o.nombre_proyecto as obra_nombre,
+               o.folio_obra
+        FROM ops_contratos ct
+        JOIN crm_clientes cl ON ct.cliente_id = cl.id
+        LEFT JOIN crm_obras o ON ct.obra_id = o.id
+    """
+    if estatus:
+        query += " WHERE ct.estatus = %s"
+        cur.execute(query + " ORDER BY ct.created_at DESC", (estatus,))
+    else:
+        cur.execute(query + " ORDER BY ct.created_at DESC")
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def get_contrato_detalle(contrato_id):
+    """Retorna contrato con sus items"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT ct.*, cl.razon_social as cliente_nombre, cl.rfc,
+               o.nombre_proyecto as obra_nombre, o.folio_obra,
+               cot.folio as cotizacion_folio
+        FROM ops_contratos ct
+        JOIN crm_clientes cl ON ct.cliente_id = cl.id
+        LEFT JOIN crm_obras o ON ct.obra_id = o.id
+        LEFT JOIN crm_cotizaciones cot ON ct.cotizacion_id = cot.id
+        WHERE ct.id = %s
+    """, (contrato_id,))
+    contrato = cur.fetchone()
+
+    cur.execute("""
+        SELECT ci.*, p.nombre as producto_nombre, p.codigo
+        FROM ops_contrato_items ci
+        JOIN cat_productos p ON ci.producto_id = p.id
+        WHERE ci.contrato_id = %s
+    """, (contrato_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return contrato, items
+
+
+def actualizar_estatus_contrato(contrato_id, estatus):
+    """Actualiza estatus de un contrato"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE ops_contratos
+        SET estatus = %s, updated_at = NOW()
+        WHERE id = %s
+    """, (estatus, contrato_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def registrar_anticipo_pago(contrato_id, monto, referencia, fecha_pago):
+    """Registra el pago del anticipo"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE ops_contratos SET
+                anticipo_pagado     = %s,
+                anticipo_referencia = %s,
+                anticipo_fecha_pago = %s,
+                anticipo_estatus    = CASE
+                    WHEN %s >= anticipo_requerido THEN 'completo'
+                    WHEN %s > 0 THEN 'parcial'
+                    ELSE 'pendiente'
+                END,
+                updated_at = NOW()
+            WHERE id = %s
+        """, (monto, referencia, fecha_pago, monto, monto, contrato_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def asignar_obra_contrato(contrato_id, obra_id):
+    """Asigna una obra a un contrato existente"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE ops_contratos
+        SET obra_id = %s, updated_at = NOW()
+        WHERE id = %s
+    """, (obra_id, contrato_id))
+    conn.commit()
+    cur.close()
+    conn.close()

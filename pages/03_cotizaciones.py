@@ -263,6 +263,7 @@ with tab_nueva:
                     nueva_id = crear_cotizacion({
                         'folio'          : folio,
                         'cliente_id'     : cliente_id,
+                        'obra_id'        : obra_id,
                         'tipo_operacion' : tipo_operacion,
                         'estatus'        : estatus,
                         'tipo_flete'     : tipo_flete,
