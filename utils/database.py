@@ -268,14 +268,15 @@ def crear_cotizacion(datos, items):
     try:
         cur.execute("""
             INSERT INTO crm_cotizaciones
-            (folio, cliente_id, tipo_operacion, estatus,
+            (folio, cliente_id, obra_id, tipo_operacion, estatus,
              tipo_flete, distancia_km, tarifa_flete, monto_flete,
              subtotal, aplica_iva, iva, total, dias_renta, notas)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
         """, (
             datos['folio'],
             datos['cliente_id'],
+            datos.get('obra_id'),
             datos['tipo_operacion'],
             datos['estatus'],
             datos['tipo_flete'],
@@ -372,3 +373,151 @@ def actualizar_estatus_cotizacion(cotizacion_id, estatus):
     conn.commit()
     cur.close()
     conn.close()
+    
+# ================================================
+# OBRAS
+# ================================================
+
+def generar_folio_obra():
+    """Genera el siguiente folio de obra"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_obra()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_obra(datos):
+    """Crea una nueva obra"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO crm_obras
+            (folio_obra, cliente_id, nombre_proyecto, direccion_obra,
+             fecha_inicio, fecha_fin_estimada, responsable, notas)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['folio_obra'],
+            datos['cliente_id'],
+            datos['nombre_proyecto'],
+            datos['direccion_obra'],
+            datos['fecha_inicio'],
+            datos['fecha_fin_estimada'],
+            datos['responsable'],
+            datos['notas']
+        ))
+        nuevo_id = cur.fetchone()[0]
+        conn.commit()
+        return nuevo_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_obras(estatus=None):
+    """Retorna lista de obras"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    query = """
+        SELECT o.*, c.razon_social as cliente_nombre
+        FROM crm_obras o
+        JOIN crm_clientes c ON o.cliente_id = c.id
+    """
+    if estatus:
+        query += " WHERE o.estatus = %s"
+        cur.execute(query + " ORDER BY o.created_at DESC", (estatus,))
+    else:
+        cur.execute(query + " ORDER BY o.created_at DESC")
+    obras = cur.fetchall()
+    cur.close()
+    conn.close()
+    return obras
+
+
+def get_obra_by_id(obra_id):
+    """Retorna una obra por su ID"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT o.*, c.razon_social as cliente_nombre
+        FROM crm_obras o
+        JOIN crm_clientes c ON o.cliente_id = c.id
+        WHERE o.id = %s
+    """, (obra_id,))
+    obra = cur.fetchone()
+    cur.close()
+    conn.close()
+    return obra
+
+
+def actualizar_estatus_obra(obra_id, estatus):
+    """Actualiza el estatus de una obra"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE crm_obras
+        SET estatus = %s, updated_at = NOW()
+        WHERE id = %s
+    """, (estatus, obra_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_contratos_por_obra(obra_id):
+    """Retorna contratos asociados a una obra"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT *
+        FROM ops_contratos
+        WHERE obra_id = %s
+        ORDER BY created_at DESC
+    """, (obra_id,))
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def actualizar_total_facturado_obra(obra_id):
+    """Recalcula el total facturado de una obra"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE crm_obras
+        SET total_facturado = (
+            SELECT COALESCE(SUM(monto_total), 0)
+            FROM ops_contratos
+            WHERE obra_id = %s
+            AND estatus != 'cancelado'
+        ),
+        updated_at = NOW()
+        WHERE id = %s
+    """, (obra_id, obra_id))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+def get_obras_por_cliente(cliente_id):
+    """Retorna obras activas de un cliente específico"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT id, folio_obra, nombre_proyecto
+        FROM crm_obras
+        WHERE cliente_id = %s
+        AND estatus = 'activa'
+        ORDER BY created_at DESC
+    """, (cliente_id,))
+    obras = cur.fetchall()
+    cur.close()
+    conn.close()
+    return obras

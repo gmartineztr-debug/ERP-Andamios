@@ -10,7 +10,8 @@ from utils.database import (
     crear_cotizacion,
     get_cotizaciones,
     get_cotizacion_detalle,
-    actualizar_estatus_cotizacion
+    actualizar_estatus_cotizacion,
+    get_obras_por_cliente
 )
 
 st.set_page_config(page_title="Cotizaciones - ICAM ERP", layout="wide")
@@ -117,8 +118,21 @@ with tab_nueva:
             disabled=(tipo_operacion == "venta")
         )
 
-    notas = st.text_area("Notas / condiciones", placeholder="Condiciones especiales, observaciones...")
+# Obra opcional
+    obras_cliente = get_obras_por_cliente(cliente_id)
+    obra_id = None
+    if obras_cliente:
+        opciones_obras = {"Sin obra (cotización directa)": None}
+        opciones_obras.update({
+            f"{o['folio_obra']} — {o['nombre_proyecto']}": o['id']
+            for o in obras_cliente
+        })
+        obra_sel = st.selectbox("Obra (opcional)", list(opciones_obras.keys()))
+        obra_id  = opciones_obras[obra_sel]
+    else:
+        st.caption("Este cliente no tiene obras activas. Puedes crear una en el módulo de Obras.")
 
+    notas = st.text_area("Notas / condiciones", placeholder="Condiciones especiales, observaciones...")
     st.divider()
 
     # — Productos —
@@ -336,3 +350,18 @@ with tab_detalle:
 
             if cot['notas']:
                 st.markdown(f"**Notas:** {cot['notas']}")
+                
+            # Botón PDF
+            st.divider()
+            if st.button("📄 Generar PDF", type="primary"):
+                try:
+                    from utils.pdf_generator import generar_pdf_cotizacion
+                    pdf_bytes = generar_pdf_cotizacion(dict(cot), [dict(i) for i in items])
+                    st.download_button(
+                        label="⬇️ Descargar PDF",
+                        data=pdf_bytes,
+                        file_name=f"Cotizacion_{cot['folio']}.pdf",
+                        mime="application/pdf"
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error generando PDF: {e}")
