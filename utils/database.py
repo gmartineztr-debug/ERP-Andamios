@@ -927,3 +927,315 @@ def actualizar_estatus_salida(salida_id, estatus, fecha_entrega=None):
     finally:
         cur.close()
         conn.close()
+
+# ================================================
+# PROVEEDORES
+# ================================================
+
+def get_proveedores():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM prov_proveedores
+        WHERE activo = TRUE
+        ORDER BY nombre
+    """)
+    proveedores = cur.fetchall()
+    cur.close()
+    conn.close()
+    return proveedores
+
+
+def crear_proveedor(datos):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO prov_proveedores
+            (nombre, rfc, contacto, telefono, email, direccion)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['nombre'],
+            datos.get('rfc'),
+            datos.get('contacto'),
+            datos.get('telefono'),
+            datos.get('email'),
+            datos.get('direccion')
+        ))
+        id_ = cur.fetchone()[0]
+        conn.commit()
+        return id_
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ================================================
+# HOJAS DE ENTRADA
+# ================================================
+
+def generar_folio_entrada():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_entrada()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def get_saldo_en_campo(contrato_id):
+    """Retorna saldo de equipo en campo para un contrato"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_saldo_en_campo
+        WHERE contrato_id = %s
+        AND saldo_en_campo > 0
+        ORDER BY codigo
+    """, (contrato_id,))
+    saldo = cur.fetchall()
+    cur.close()
+    conn.close()
+    return saldo
+
+
+def get_contratos_con_equipo_en_campo():
+    """Contratos activos que tienen equipo en campo"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT DISTINCT
+            ct.id, ct.folio, ct.cliente_id,
+            cl.razon_social AS cliente_nombre,
+            cl.telefono     AS cliente_telefono,
+            ct.obra_id,
+            o.folio_obra,
+            o.nombre_proyecto AS obra_nombre,
+            o.direccion_obra
+        FROM v_saldo_en_campo v
+        JOIN ops_contratos ct ON v.contrato_id = ct.id
+        JOIN crm_clientes cl  ON ct.cliente_id = cl.id
+        LEFT JOIN crm_obras o ON ct.obra_id    = o.id
+        ORDER BY cl.razon_social
+    """)
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def crear_hoja_entrada(datos, items):
+    """Crea HE con sus items"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO inv_entradas
+            (folio, tipo_entrada, estatus,
+             contrato_id, cliente_id, obra_id,
+             proveedor_id, num_factura, costo_total,
+             lote_fabricacion, fecha_entrada, notas)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos['tipo_entrada'],
+            datos.get('estatus', 'pendiente'),
+            datos.get('contrato_id'),
+            datos.get('cliente_id'),
+            datos.get('obra_id'),
+            datos.get('proveedor_id'),
+            datos.get('num_factura'),
+            datos.get('costo_total', 0),
+            datos.get('lote_fabricacion'),
+            datos['fecha_entrada'],
+            datos.get('notas')
+        ))
+        entrada_id = cur.fetchone()[0]
+
+        for item in items:
+            cur.execute("""
+                INSERT INTO inv_entrada_items
+                (entrada_id, producto_id,
+                 cantidad_total, costo_unitario,
+                 cantidad_buena, cantidad_danada,
+                 cantidad_perdida, cantidad_chatarra,
+                 peso_unitario, peso_total)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (
+                entrada_id,
+                item['producto_id'],
+                item.get('cantidad_total', 0),
+                item.get('costo_unitario', 0),
+                item.get('cantidad_buena', 0),
+                item.get('cantidad_danada', 0),
+                item.get('cantidad_perdida', 0),
+                item.get('cantidad_chatarra', 0),
+                item.get('peso_unitario', 0),
+                item.get('peso_total', 0)
+            ))
+
+        conn.commit()
+        return entrada_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_hojas_entrada(tipo=None):
+    """Retorna hojas de entrada"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    query = """
+        SELECT e.*,
+               cl.razon_social  AS cliente_nombre,
+               ct.folio         AS contrato_folio,
+               o.nombre_proyecto AS obra_nombre,
+               p.nombre         AS proveedor_nombre
+        FROM inv_entradas e
+        LEFT JOIN crm_clientes cl   ON e.cliente_id   = cl.id
+        LEFT JOIN ops_contratos ct  ON e.contrato_id  = ct.id
+        LEFT JOIN crm_obras o       ON e.obra_id      = o.id
+        LEFT JOIN prov_proveedores p ON e.proveedor_id = p.id
+    """
+    if tipo:
+        query += " WHERE e.tipo_entrada = %s"
+        cur.execute(query + " ORDER BY e.created_at DESC", (tipo,))
+    else:
+        cur.execute(query + " ORDER BY e.created_at DESC")
+    entradas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return entradas
+
+
+def get_hoja_entrada_detalle(entrada_id):
+    """Retorna HE con sus items"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT e.*,
+               cl.razon_social  AS cliente_nombre,
+               cl.telefono      AS cliente_telefono,
+               ct.folio         AS contrato_folio,
+               o.nombre_proyecto AS obra_nombre,
+               o.folio_obra,
+               o.direccion_obra,
+               p.nombre         AS proveedor_nombre
+        FROM inv_entradas e
+        LEFT JOIN crm_clientes cl    ON e.cliente_id   = cl.id
+        LEFT JOIN ops_contratos ct   ON e.contrato_id  = ct.id
+        LEFT JOIN crm_obras o        ON e.obra_id      = o.id
+        LEFT JOIN prov_proveedores p ON e.proveedor_id = p.id
+        WHERE e.id = %s
+    """, (entrada_id,))
+    entrada = cur.fetchone()
+
+    cur.execute("""
+        SELECT ei.*,
+               p.nombre  AS producto_nombre,
+               p.codigo,
+               p.peso_kg,
+               p.precio_venta
+        FROM inv_entrada_items ei
+        JOIN cat_productos p ON ei.producto_id = p.id
+        WHERE ei.entrada_id = %s
+    """, (entrada_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return entrada, items
+
+
+def actualizar_estatus_entrada(entrada_id, estatus, fecha_cierre=None):
+    """Actualiza estatus — el trigger actualiza inventario al cerrar"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE inv_entradas SET
+                estatus      = %s,
+                fecha_cierre = %s,
+                updated_at   = NOW()
+            WHERE id = %s
+        """, (estatus, fecha_cierre, entrada_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def vincular_contrato_venta_entrada(entrada_id, contrato_venta_id):
+    """Liga el contrato de venta generado a la HE"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE inv_entradas SET
+                contrato_venta_id = %s,
+                updated_at        = NOW()
+            WHERE id = %s
+        """, (contrato_venta_id, entrada_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_productos_por_codigo(codigo):
+    """Busca producto por código exacto"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT p.*, im.cantidad_disponible
+        FROM cat_productos p
+        LEFT JOIN inv_master im ON p.id = im.producto_id
+        WHERE p.codigo = %s AND p.activo = TRUE
+    """, (codigo,))
+    producto = cur.fetchone()
+    cur.close()
+    conn.close()
+    return producto
+
+def crear_contrato_item(datos):
+    """Crea un item de contrato"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO ops_contrato_items
+            (contrato_id, producto_id, cantidad, precio_unitario, subtotal)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['contrato_id'],
+            datos['producto_id'],
+            datos['cantidad'],
+            datos['precio_unitario'],
+            datos['subtotal']
+        ))
+        id_ = cur.fetchone()[0]
+        conn.commit()
+        return id_
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
