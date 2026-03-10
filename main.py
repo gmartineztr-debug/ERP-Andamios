@@ -5,7 +5,7 @@ import streamlit as st
 from utils.database import get_clientes, get_productos
 
 st.set_page_config(
-    page_title="ICAM ERP",
+    page_title="ANDAMIOS ERP",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded"

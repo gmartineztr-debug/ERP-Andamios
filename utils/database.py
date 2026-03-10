@@ -565,7 +565,7 @@ def crear_contrato(datos, items):
     try:
         cur.execute("""
             INSERT INTO ops_contratos
-            (folio, cotizacion_id, obra_id, cliente_id, tipo_contrato, estatus,
+            (folio, folio_raiz, cotizacion_id, obra_id, cliente_id, tipo_contrato, estatus,
              fecha_contrato, fecha_inicio, fecha_fin, dias_renta,
              subtotal, monto_flete, iva, monto_total,
              anticipo_porcentaje, anticipo_requerido, anticipo_pagado,
@@ -573,10 +573,11 @@ def crear_contrato(datos, items):
              pagare_numero, pagare_monto, pagare_firmante,
              pagare_fecha_vencimiento, pagare_firmado,
              contrato_origen_id, notas)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             RETURNING id
         """, (
             datos['folio'],
+            datos['folio'],          # folio_raiz = su propio folio
             datos.get('cotizacion_id'),
             datos.get('obra_id'),
             datos['cliente_id'],
@@ -1658,3 +1659,182 @@ def actualizar_estatus_oc(oc_id, estatus):
     finally:
         cur.close()
         conn.close()
+        
+# ================================================
+# RENOVACIONES
+# ================================================
+
+def get_contratos_por_vencer():
+    """Contratos activos que vencen en los próximos 7 días"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_contratos_por_vencer")
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def get_cadena_renovaciones(folio):
+    """Retorna cadena completa de renovaciones de un contrato"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM get_cadena_renovaciones(%s)", (folio,))
+    cadena = cur.fetchall()
+    cur.close()
+    conn.close()
+    return cadena
+
+
+def renovar_contrato(contrato_origen_id, datos, items):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Obtener folio_raiz del contrato origen
+        cur.execute("""
+            SELECT folio_raiz FROM ops_contratos WHERE id = %s
+        """, (contrato_origen_id,))
+        row = cur.fetchone()
+        folio_raiz = row[0] if row else datos['folio']
+
+        # Crear nuevo contrato heredando folio_raiz
+        cur.execute("""
+            INSERT INTO ops_contratos (
+                folio, folio_raiz, cotizacion_id, obra_id, cliente_id,
+                tipo_contrato, tipo_operacion, estatus,
+                fecha_contrato, fecha_inicio, fecha_fin, dias_renta,
+                subtotal, monto_flete, aplica_iva, iva, monto_total,
+                anticipo_porcentaje, anticipo_requerido, anticipo_pagado,
+                anticipo_estatus, pagare_monto, pagare_firmado,
+                contrato_origen_id, notas
+            ) VALUES (
+                %s,%s,%s,%s,%s,
+                %s,%s,%s,
+                %s,%s,%s,%s,
+                %s,%s,%s,%s,%s,
+                %s,%s,%s,
+                %s,%s,%s,
+                %s,%s
+            ) RETURNING id
+        """, (
+            datos['folio'],
+            folio_raiz,              # hereda del origen
+            datos.get('cotizacion_id'),
+            datos.get('obra_id'),
+            datos['cliente_id'],
+            datos['tipo_contrato'],
+            'renovacion',
+            'activo',
+            datos['fecha_contrato'],
+            datos['fecha_inicio'],
+            datos['fecha_fin'],
+            datos['dias_renta'],
+            datos['subtotal'],
+            datos.get('monto_flete', 0),
+            datos.get('aplica_iva', True),
+            datos['iva'],
+            datos['monto_total'],
+            datos.get('anticipo_porcentaje', 50),
+            datos.get('anticipo_requerido', 0),
+            0,
+            'pendiente',
+            datos.get('pagare_monto', 0),
+            False,
+            contrato_origen_id,
+            datos.get('notas')
+        ))
+        nuevo_id = cur.fetchone()[0]
+
+        # Insertar items
+        for item in items:
+            cur.execute("""
+                INSERT INTO ops_contrato_items
+                (contrato_id, producto_id, cantidad, precio_unitario, subtotal)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                nuevo_id,
+                item['producto_id'],
+                item['cantidad'],
+                item['precio_unitario'],
+                item['subtotal']
+            ))
+
+        # Marcar contrato origen como renovado
+        cur.execute("""
+            UPDATE ops_contratos SET
+                estatus    = 'renovado',
+                updated_at = NOW()
+            WHERE id = %s
+        """, (contrato_origen_id,))
+
+        conn.commit()
+        return nuevo_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+# ================================================
+# FOLIO RAÍZ Y ESTADO DE CUENTA
+# ================================================
+
+def get_estado_cuenta_folio_raiz(folio_raiz):
+    """Todos los contratos de una cadena por folio raíz"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_estado_cuenta
+        WHERE folio_raiz = %s
+        ORDER BY fecha_contrato
+    """, (folio_raiz,))
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def get_resumen_folio_raiz(folio_raiz):
+    """Resumen financiero de una cadena por folio raíz"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_resumen_folio_raiz
+        WHERE folio_raiz = %s
+    """, (folio_raiz,))
+    resumen = cur.fetchone()
+    cur.close()
+    conn.close()
+    return resumen
+
+
+def get_folios_raiz_cliente(cliente_id):
+    """Todos los folios raíz de un cliente"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_resumen_folio_raiz
+        WHERE cliente_nombre IN (
+            SELECT razon_social FROM crm_clientes WHERE id = %s
+        )
+        ORDER BY fecha_inicio DESC
+    """, (cliente_id,))
+    folios = cur.fetchall()
+    cur.close()
+    conn.close()
+    return folios
+
+
+def get_todos_folios_raiz():
+    """Todos los folios raíz existentes"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_resumen_folio_raiz
+        ORDER BY fecha_inicio DESC
+    """)
+    folios = cur.fetchall()
+    cur.close()
+    conn.close()
+    return folios
