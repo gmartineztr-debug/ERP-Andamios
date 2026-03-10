@@ -1239,3 +1239,422 @@ def crear_contrato_item(datos):
     finally:
         cur.close()
         conn.close()
+        
+# ================================================
+# FABRICACIÓN — INSUMOS
+# ================================================
+
+def get_insumos():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM fab_insumos
+        WHERE activo = TRUE
+        ORDER BY nombre
+    """)
+    insumos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return insumos
+
+
+def crear_insumo(datos):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO fab_insumos (codigo, nombre, unidad, descripcion)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['codigo'],
+            datos['nombre'],
+            datos['unidad'],
+            datos.get('descripcion')
+        ))
+        id_ = cur.fetchone()[0]
+        conn.commit()
+        return id_
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ================================================
+# FABRICACIÓN — BOM
+# ================================================
+
+def get_bom_producto(producto_id):
+    """Retorna receta de un producto"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT b.*, i.nombre AS insumo_nombre,
+               i.codigo AS insumo_codigo,
+               i.unidad
+        FROM fab_bom b
+        JOIN fab_insumos i ON b.insumo_id = i.id
+        WHERE b.producto_id = %s
+        ORDER BY i.nombre
+    """, (producto_id,))
+    bom = cur.fetchall()
+    cur.close()
+    conn.close()
+    return bom
+
+
+def guardar_bom_producto(producto_id, items):
+    """Reemplaza BOM completo de un producto"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Eliminar BOM existente
+        cur.execute(
+            "DELETE FROM fab_bom WHERE producto_id = %s",
+            (producto_id,)
+        )
+        # Insertar nuevo BOM
+        for item in items:
+            cur.execute("""
+                INSERT INTO fab_bom
+                (producto_id, insumo_id, cantidad_por_pieza, notas)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                producto_id,
+                item['insumo_id'],
+                item['cantidad_por_pieza'],
+                item.get('notas')
+            ))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def calcular_materiales_of(items_of):
+    """
+    Calcula materiales necesarios para una OF
+    items_of: [{'producto_id': x, 'cantidad': y}, ...]
+    Retorna: [{'insumo_id', 'nombre', 'unidad', 'cantidad_necesaria'}]
+    """
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    materiales = {}
+    for item in items_of:
+        cur.execute("""
+            SELECT b.insumo_id, i.codigo, i.nombre, i.unidad,
+                   b.cantidad_por_pieza
+            FROM fab_bom b
+            JOIN fab_insumos i ON b.insumo_id = i.id
+            WHERE b.producto_id = %s
+        """, (item['producto_id'],))
+        bom = cur.fetchall()
+
+        for linea in bom:
+            ins_id = linea['insumo_id']
+            cant   = float(linea['cantidad_por_pieza']) * item['cantidad']
+            if ins_id in materiales:
+                materiales[ins_id]['cantidad_necesaria'] += cant
+            else:
+                materiales[ins_id] = {
+                    'insumo_id'        : ins_id,
+                    'codigo'           : linea['codigo'],
+                    'nombre'           : linea['nombre'],
+                    'unidad'           : linea['unidad'],
+                    'cantidad_necesaria': cant,
+                    'costo_unitario'   : 0,
+                    'subtotal'         : 0
+                }
+
+    cur.close()
+    conn.close()
+    return list(materiales.values())
+
+
+# ================================================
+# FABRICACIÓN — ÓRDENES DE FABRICACIÓN
+# ================================================
+
+def generar_folio_of():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_of()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_orden_fabricacion(datos, items):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO fab_ordenes
+            (folio, estatus, fecha_apertura, fecha_estimada, notas)
+            VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos.get('estatus', 'abierta'),
+            datos['fecha_apertura'],
+            datos.get('fecha_estimada'),
+            datos.get('notas')
+        ))
+        orden_id = cur.fetchone()[0]
+
+        for item in items:
+            cur.execute("""
+                INSERT INTO fab_orden_items
+                (orden_id, producto_id, cantidad_solicitada)
+                VALUES (%s, %s, %s)
+            """, (
+                orden_id,
+                item['producto_id'],
+                item['cantidad']
+            ))
+
+        conn.commit()
+        return orden_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_ordenes_fabricacion():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT f.*,
+               COUNT(fi.id) AS total_productos
+        FROM fab_ordenes f
+        LEFT JOIN fab_orden_items fi ON fi.orden_id = f.id
+        GROUP BY f.id
+        ORDER BY f.created_at DESC
+    """)
+    ordenes = cur.fetchall()
+    cur.close()
+    conn.close()
+    return ordenes
+
+
+def get_orden_fabricacion_detalle(orden_id):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT * FROM fab_ordenes WHERE id = %s
+    """, (orden_id,))
+    orden = cur.fetchone()
+
+    cur.execute("""
+        SELECT fi.*, p.nombre AS producto_nombre,
+               p.codigo, p.peso_kg
+        FROM fab_orden_items fi
+        JOIN cat_productos p ON fi.producto_id = p.id
+        WHERE fi.orden_id = %s
+    """, (orden_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return orden, items
+
+
+def actualizar_estatus_of(orden_id, estatus,
+                           fecha_cierre=None, items_fabricados=None):
+    """
+    Actualiza estatus OF.
+    Si estatus=terminada, actualiza cantidad_fabricada por item.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE fab_ordenes SET
+                estatus      = %s,
+                fecha_cierre = %s,
+                updated_at   = NOW()
+            WHERE id = %s
+        """, (estatus, fecha_cierre, orden_id))
+
+        if estatus == 'terminada' and items_fabricados:
+            for item in items_fabricados:
+                cur.execute("""
+                    UPDATE fab_orden_items SET
+                        cantidad_fabricada = %s
+                    WHERE orden_id = %s AND producto_id = %s
+                """, (
+                    item['cantidad_fabricada'],
+                    orden_id,
+                    item['producto_id']
+                ))
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_ordenes_terminadas_sin_he():
+    """OF terminadas que aún no tienen HE generada"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT f.*
+        FROM fab_ordenes f
+        WHERE f.estatus = 'terminada'
+        AND NOT EXISTS (
+            SELECT 1 FROM inv_entradas e
+            WHERE e.orden_fabricacion_id = f.id
+        )
+        ORDER BY f.fecha_cierre DESC
+    """)
+    ordenes = cur.fetchall()
+    cur.close()
+    conn.close()
+    return ordenes
+
+
+# ================================================
+# FABRICACIÓN — ÓRDENES DE COMPRA
+# ================================================
+
+def generar_folio_oc():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_oc()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_orden_compra(datos, items):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        total = sum(
+            float(i['cantidad']) * float(i['costo_unitario'])
+            for i in items
+        )
+        cur.execute("""
+            INSERT INTO fab_ordenes_compra
+            (folio, orden_id, proveedor_id, estatus,
+             fecha_oc, fecha_estimada_entrega, total, notas)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos.get('orden_id'),
+            datos.get('proveedor_id'),
+            datos.get('estatus', 'borrador'),
+            datos['fecha_oc'],
+            datos.get('fecha_estimada_entrega'),
+            total,
+            datos.get('notas')
+        ))
+        oc_id = cur.fetchone()[0]
+
+        for item in items:
+            subtotal = float(item['cantidad']) * float(item['costo_unitario'])
+            cur.execute("""
+                INSERT INTO fab_oc_items
+                (oc_id, insumo_id, cantidad, costo_unitario, subtotal)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                oc_id,
+                item['insumo_id'],
+                item['cantidad'],
+                item['costo_unitario'],
+                subtotal
+            ))
+
+        conn.commit()
+        return oc_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_ordenes_compra():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT oc.*,
+               f.folio  AS of_folio,
+               p.nombre AS proveedor_nombre
+        FROM fab_ordenes_compra oc
+        LEFT JOIN fab_ordenes f        ON oc.orden_id    = f.id
+        LEFT JOIN prov_proveedores p   ON oc.proveedor_id = p.id
+        ORDER BY oc.created_at DESC
+    """)
+    ocs = cur.fetchall()
+    cur.close()
+    conn.close()
+    return ocs
+
+
+def get_orden_compra_detalle(oc_id):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT oc.*,
+               f.folio  AS of_folio,
+               p.nombre AS proveedor_nombre,
+               p.telefono AS proveedor_telefono
+        FROM fab_ordenes_compra oc
+        LEFT JOIN fab_ordenes f      ON oc.orden_id     = f.id
+        LEFT JOIN prov_proveedores p ON oc.proveedor_id = p.id
+        WHERE oc.id = %s
+    """, (oc_id,))
+    oc = cur.fetchone()
+
+    cur.execute("""
+        SELECT oi.*, i.nombre AS insumo_nombre,
+               i.codigo, i.unidad
+        FROM fab_oc_items oi
+        JOIN fab_insumos i ON oi.insumo_id = i.id
+        WHERE oi.oc_id = %s
+    """, (oc_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return oc, items
+
+
+def actualizar_estatus_oc(oc_id, estatus):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE fab_ordenes_compra SET
+                estatus    = %s,
+                updated_at = NOW()
+            WHERE id = %s
+        """, (estatus, oc_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
