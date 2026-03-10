@@ -1838,3 +1838,74 @@ def get_todos_folios_raiz():
     cur.close()
     conn.close()
     return folios
+
+# ================================================
+# DASHBOARD
+# ================================================
+
+def get_dashboard_metricas():
+    """Métricas principales del dashboard"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_dashboard_metricas")
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row
+
+
+def get_facturacion_mensual():
+    """Facturación de los últimos 6 meses"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_facturacion_mensual")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_stock_critico():
+    """Productos por debajo del stock mínimo"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_stock_critico")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_contratos_proximos(dias=30):
+    """Contratos que vencen en los próximos N días"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_contratos_proximos_30
+        WHERE dias_restantes <= %s
+        ORDER BY dias_restantes
+    """, (dias,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_facturacion_periodo(fecha_inicio, fecha_fin):
+    """Facturación entre dos fechas"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT
+            COUNT(*)                          AS total_contratos,
+            COALESCE(SUM(monto_total), 0)     AS facturacion,
+            COALESCE(SUM(COALESCE(anticipo_pagado, 0)), 0) AS cobrado,
+            COALESCE(SUM(monto_total - COALESCE(anticipo_pagado, 0)), 0) AS por_cobrar
+        FROM ops_contratos
+        WHERE fecha_contrato BETWEEN %s AND %s
+        AND estatus NOT IN ('cancelado')
+    """, (fecha_inicio, fecha_fin))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row
