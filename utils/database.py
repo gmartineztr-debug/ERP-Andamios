@@ -743,3 +743,187 @@ def asignar_obra_contrato(contrato_id, obra_id):
     conn.commit()
     cur.close()
     conn.close()
+    
+# ================================================
+# HOJAS DE SALIDA
+# ================================================
+
+def generar_folio_salida():
+    """Genera el siguiente folio de hoja de salida"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_salida()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def get_contratos_sin_hs_completa():
+    """Retorna contratos activos con entregas pendientes"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT ct.*, cl.razon_social as cliente_nombre,
+               cl.telefono as cliente_telefono,
+               o.nombre_proyecto as obra_nombre,
+               o.folio_obra, o.direccion_obra
+        FROM ops_contratos ct
+        JOIN crm_clientes cl ON ct.cliente_id = cl.id
+        LEFT JOIN crm_obras o ON ct.obra_id = o.id
+        WHERE ct.estatus = 'activo'
+        ORDER BY ct.fecha_inicio ASC
+    """)
+    contratos = cur.fetchall()
+    cur.close()
+    conn.close()
+    return contratos
+
+
+def get_cantidad_enviada_por_contrato(contrato_id, producto_id):
+    """Retorna cantidad ya enviada de un producto en un contrato"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COALESCE(SUM(si.cantidad), 0)
+        FROM inv_salida_items si
+        JOIN inv_salidas s ON si.salida_id = s.id
+        WHERE s.contrato_id = %s
+        AND si.producto_id = %s
+        AND s.estatus != 'cancelada'
+    """, (contrato_id, producto_id))
+    cantidad = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return int(cantidad)
+
+
+def crear_hoja_salida(datos, items):
+    """Crea una hoja de salida con sus items"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        peso_total = sum(i['peso_total'] for i in items)
+        cur.execute("""
+            INSERT INTO inv_salidas
+            (folio, contrato_id, cliente_id, obra_id,
+             chofer, observaciones, estatus, fecha_salida,
+             peso_total, contacto_entrega, telefono_entrega)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos['contrato_id'],
+            datos['cliente_id'],
+            datos.get('obra_id'),
+            datos.get('chofer'),
+            datos.get('observaciones'),
+            datos['estatus'],
+            datos['fecha_salida'],
+            peso_total,
+            datos.get('contacto_entrega'),
+            datos.get('telefono_entrega')
+        ))
+        salida_id = cur.fetchone()[0]
+
+        for item in items:
+            cur.execute("""
+                INSERT INTO inv_salida_items
+                (salida_id, producto_id, cantidad, peso_unitario, peso_total)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (
+                salida_id,
+                item['producto_id'],
+                item['cantidad'],
+                item['peso_unitario'],
+                item['peso_total']
+            ))
+
+        conn.commit()
+        return salida_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+def get_hojas_salida(contrato_id=None):
+    """Retorna hojas de salida"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    query = """
+        SELECT s.*, cl.razon_social as cliente_nombre,
+               ct.folio as contrato_folio,
+               o.nombre_proyecto as obra_nombre
+        FROM inv_salidas s
+        JOIN crm_clientes cl ON s.cliente_id = cl.id
+        JOIN ops_contratos ct ON s.contrato_id = ct.id
+        LEFT JOIN crm_obras o ON s.obra_id = o.id
+    """
+    if contrato_id:
+        query += " WHERE s.contrato_id = %s"
+        cur.execute(query + " ORDER BY s.created_at DESC", (contrato_id,))
+    else:
+        cur.execute(query + " ORDER BY s.created_at DESC")
+    salidas = cur.fetchall()
+    cur.close()
+    conn.close()
+    return salidas
+
+
+def get_hoja_salida_detalle(salida_id):
+    """Retorna hoja de salida con sus items"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cur.execute("""
+        SELECT s.*, cl.razon_social as cliente_nombre,
+               cl.telefono as cliente_telefono,
+               cl.contacto as cliente_contacto,
+               ct.folio as contrato_folio,
+               o.nombre_proyecto as obra_nombre,
+               o.folio_obra, o.direccion_obra
+        FROM inv_salidas s
+        JOIN crm_clientes cl ON s.cliente_id = cl.id
+        JOIN ops_contratos ct ON s.contrato_id = ct.id
+        LEFT JOIN crm_obras o ON s.obra_id = o.id
+        WHERE s.id = %s
+    """, (salida_id,))
+    salida = cur.fetchone()
+
+    cur.execute("""
+        SELECT si.*, p.nombre as producto_nombre,
+               p.codigo, p.peso_kg,
+               i.cantidad_disponible
+        FROM inv_salida_items si
+        JOIN cat_productos p ON si.producto_id = p.id
+        LEFT JOIN inv_master i ON p.id = i.producto_id
+        WHERE si.salida_id = %s
+    """, (salida_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return salida, items
+
+
+def actualizar_estatus_salida(salida_id, estatus, fecha_entrega=None):
+    """Actualiza estatus de hoja de salida"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE inv_salidas SET
+                estatus        = %s,
+                fecha_entrega  = %s,
+                updated_at     = NOW()
+            WHERE id = %s
+        """, (estatus, fecha_entrega, salida_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()

@@ -671,3 +671,388 @@ def generar_pdf_contrato(contrato, items):
     doc.build(contenido)
     buffer.seek(0)
     return buffer.getvalue()
+
+def generar_pdf_hoja_salida(hs, items):
+    """Genera PDF de Hoja de Salida"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=letter,
+        rightMargin=15*mm, leftMargin=15*mm,
+        topMargin=15*mm, bottomMargin=15*mm
+    )
+    contenido = []
+
+    # ENCABEZADO
+    datos_enc = [[
+        Paragraph(EMPRESA['nombre'], ESTILO_TITULO),
+        Paragraph(
+            f"<b>HOJA DE SALIDA</b><br/>"
+            f"<font size=14 color='#2e86c1'>{hs['folio']}</font>",
+            ParagraphStyle('Folio', fontName='Helvetica-Bold',
+                           fontSize=11, alignment=TA_RIGHT,
+                           textColor=COLOR_PRIMARIO)
+        )
+    ]]
+    t = Table(datos_enc, colWidths=[100*mm, 75*mm])
+    t.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+    contenido.append(t)
+    contenido.append(Paragraph(
+        f"RFC: {EMPRESA['rfc']} | {EMPRESA['direccion']}",
+        ESTILO_SMALL
+    ))
+    contenido.append(Paragraph(
+        f"Tel: {EMPRESA['telefono']} | {EMPRESA['email']}",
+        ESTILO_SMALL
+    ))
+    contenido.append(HRFlowable(width="100%", thickness=2,
+                                color=COLOR_PRIMARIO, spaceAfter=4*mm))
+
+    # DATOS GENERALES
+    def fmt(f):
+        if f and hasattr(f, 'strftime'):
+            return f.strftime('%d/%m/%Y')
+        return str(f)[:10] if f else '—'
+
+    obra_txt = f"{hs.get('folio_obra','—')} — {hs.get('obra_nombre','')}" \
+               if hs.get('obra_nombre') else "Sin obra asignada"
+
+    datos_info = [
+        [
+            Paragraph("<b>DATOS DE ENTREGA</b>", ESTILO_SUBTITULO),
+            Paragraph("<b>DATOS DEL DOCUMENTO</b>", ESTILO_SUBTITULO)
+        ],
+        [
+            Paragraph(f"<b>Cliente:</b> {hs['cliente_nombre']}", ESTILO_NORMAL),
+            Paragraph(f"<b>Folio HS:</b> {hs['folio']}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Contacto:</b> {hs.get('contacto_entrega') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Contrato:</b> {hs['contrato_folio']}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Teléfono:</b> {hs.get('telefono_entrega') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Fecha salida:</b> {fmt(hs['fecha_salida'])}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Obra:</b> {obra_txt}", ESTILO_NORMAL),
+            Paragraph(f"<b>Chofer:</b> {hs.get('chofer') or '—'}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Dirección:</b> {hs.get('direccion_obra') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Peso total:</b> {float(hs['peso_total']):.1f} kg", ESTILO_NORMAL)
+        ],
+    ]
+    tabla_info = Table(datos_info, colWidths=[100*mm, 75*mm])
+    tabla_info.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (-1,0), COLOR_GRIS),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, COLOR_SECUNDARIO),
+        ('BOX', (0,0), (0,-1), 0.5, colors.lightgrey),
+        ('BOX', (1,0), (1,-1), 0.5, colors.lightgrey),
+        ('TOPPADDING', (0,0), (-1,-1), 1.5*mm),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1.5*mm),
+    ]))
+    contenido.append(tabla_info)
+    contenido.append(Spacer(1, 4*mm))
+
+    # TABLA DE DESPIECE
+    contenido.append(Paragraph("DESPIECE DE EQUIPO", ESTILO_SUBTITULO))
+
+    encabezados = [
+        Paragraph("#", ESTILO_HEADER_TABLA),
+        Paragraph("Código", ESTILO_HEADER_TABLA),
+        Paragraph("Descripción", ESTILO_HEADER_TABLA),
+        Paragraph("Cantidad", ESTILO_HEADER_TABLA),
+        Paragraph("Peso Unit. kg", ESTILO_HEADER_TABLA),
+        Paragraph("Peso Total kg", ESTILO_HEADER_TABLA),
+    ]
+    filas = [encabezados]
+    total_piezas = 0
+    total_peso   = 0
+    for idx, item in enumerate(items, 1):
+        cant = item['cantidad']
+        peso_u = float(item['peso_unitario'] or 0)
+        peso_t = float(item['peso_total'] or 0)
+        total_piezas += cant
+        total_peso   += peso_t
+        filas.append([
+            Paragraph(str(idx), ESTILO_CELDA),
+            Paragraph(item['codigo'], ESTILO_CELDA),
+            Paragraph(item['producto_nombre'], ESTILO_NORMAL),
+            Paragraph(str(cant), ESTILO_CELDA),
+            Paragraph(f"{peso_u:.2f}", ESTILO_CELDA),
+            Paragraph(f"{peso_t:.2f}", ESTILO_CELDA),
+        ])
+
+    # Fila totales
+    filas.append([
+        Paragraph("", ESTILO_CELDA),
+        Paragraph("", ESTILO_CELDA),
+        Paragraph("<b>TOTALES</b>", ParagraphStyle(
+            'Total', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_RIGHT
+        )),
+        Paragraph(f"<b>{total_piezas}</b>", ParagraphStyle(
+            'TotalN', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_CENTER
+        )),
+        Paragraph("", ESTILO_CELDA),
+        Paragraph(f"<b>{total_peso:.2f}</b>", ParagraphStyle(
+            'TotalP', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_CENTER
+        )),
+    ])
+
+    tabla_items = Table(
+        filas,
+        colWidths=[8*mm, 22*mm, 70*mm, 18*mm, 22*mm, 22*mm]
+    )
+    tabla_items.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARIO),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ROWBACKGROUNDS', (0,1), (-1,-2), [colors.white, COLOR_GRIS]),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#eaf4fb')),
+        ('GRID', (0,0), (-1,-1), 0.3, colors.lightgrey),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2*mm),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2*mm),
+    ]))
+    contenido.append(tabla_items)
+    contenido.append(Spacer(1, 6*mm))
+
+    # OBSERVACIONES
+    if hs.get('observaciones'):
+        contenido.append(Paragraph("OBSERVACIONES", ESTILO_SUBTITULO))
+        contenido.append(Paragraph(hs['observaciones'], ESTILO_NORMAL))
+        contenido.append(Spacer(1, 4*mm))
+
+    # FIRMA
+    contenido.append(HRFlowable(width="100%", thickness=0.5,
+                                color=colors.lightgrey, spaceAfter=6*mm))
+    datos_firma = [
+        [
+            Paragraph("_______________________________", ESTILO_NORMAL),
+            Paragraph("_______________________________", ESTILO_NORMAL),
+        ],
+        [
+            Paragraph(f"<b>{EMPRESA['nombre']}</b>", ESTILO_NORMAL),
+            Paragraph(f"<b>{hs['cliente_nombre']}</b>", ESTILO_NORMAL),
+        ],
+        [
+            Paragraph("Entrega", ESTILO_SMALL),
+            Paragraph("Recibe — Firma y sello", ESTILO_SMALL),
+        ],
+    ]
+    tabla_firma = Table(datos_firma, colWidths=[87*mm, 87*mm])
+    tabla_firma.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('TOPPADDING', (0,0), (-1,-1), 2*mm),
+    ]))
+    contenido.append(tabla_firma)
+
+    # PIE
+    contenido.append(Spacer(1, 4*mm))
+    contenido.append(HRFlowable(width="100%", thickness=0.5,
+                                color=colors.lightgrey, spaceAfter=2*mm))
+    contenido.append(Paragraph(
+        f"Hoja de Salida {hs['folio']} | Contrato {hs['contrato_folio']} | "
+        f"{EMPRESA['nombre']} | {EMPRESA['telefono']}",
+        ESTILO_SMALL
+    ))
+
+    doc.build(contenido)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+
+def generar_pdf_hoja_salida(hs, items):
+    """Genera PDF de Hoja de Salida"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=letter,
+        rightMargin=15*mm, leftMargin=15*mm,
+        topMargin=15*mm, bottomMargin=15*mm
+    )
+    contenido = []
+
+    # ENCABEZADO
+    datos_enc = [[
+        Paragraph(EMPRESA['nombre'], ESTILO_TITULO),
+        Paragraph(
+            f"<b>HOJA DE SALIDA</b><br/>"
+            f"<font size=14 color='#2e86c1'>{hs['folio']}</font>",
+            ParagraphStyle('Folio', fontName='Helvetica-Bold',
+                           fontSize=11, alignment=TA_RIGHT,
+                           textColor=COLOR_PRIMARIO)
+        )
+    ]]
+    t = Table(datos_enc, colWidths=[100*mm, 75*mm])
+    t.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+    contenido.append(t)
+    contenido.append(Paragraph(
+        f"RFC: {EMPRESA['rfc']} | {EMPRESA['direccion']}",
+        ESTILO_SMALL
+    ))
+    contenido.append(Paragraph(
+        f"Tel: {EMPRESA['telefono']} | {EMPRESA['email']}",
+        ESTILO_SMALL
+    ))
+    contenido.append(HRFlowable(width="100%", thickness=2,
+                                color=COLOR_PRIMARIO, spaceAfter=4*mm))
+
+    # DATOS GENERALES
+    def fmt(f):
+        if f and hasattr(f, 'strftime'):
+            return f.strftime('%d/%m/%Y')
+        return str(f)[:10] if f else '—'
+
+    obra_txt = f"{hs.get('folio_obra','—')} — {hs.get('obra_nombre','')}" \
+               if hs.get('obra_nombre') else "Sin obra asignada"
+
+    datos_info = [
+        [
+            Paragraph("<b>DATOS DE ENTREGA</b>", ESTILO_SUBTITULO),
+            Paragraph("<b>DATOS DEL DOCUMENTO</b>", ESTILO_SUBTITULO)
+        ],
+        [
+            Paragraph(f"<b>Cliente:</b> {hs['cliente_nombre']}", ESTILO_NORMAL),
+            Paragraph(f"<b>Folio HS:</b> {hs['folio']}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Contacto:</b> {hs.get('contacto_entrega') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Contrato:</b> {hs['contrato_folio']}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Teléfono:</b> {hs.get('telefono_entrega') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Fecha salida:</b> {fmt(hs['fecha_salida'])}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Obra:</b> {obra_txt}", ESTILO_NORMAL),
+            Paragraph(f"<b>Chofer:</b> {hs.get('chofer') or '—'}", ESTILO_NORMAL)
+        ],
+        [
+            Paragraph(f"<b>Dirección:</b> {hs.get('direccion_obra') or '—'}", ESTILO_NORMAL),
+            Paragraph(f"<b>Peso total:</b> {float(hs['peso_total']):.1f} kg", ESTILO_NORMAL)
+        ],
+    ]
+    tabla_info = Table(datos_info, colWidths=[100*mm, 75*mm])
+    tabla_info.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('BACKGROUND', (0,0), (-1,0), COLOR_GRIS),
+        ('LINEBELOW', (0,0), (-1,0), 0.5, COLOR_SECUNDARIO),
+        ('BOX', (0,0), (0,-1), 0.5, colors.lightgrey),
+        ('BOX', (1,0), (1,-1), 0.5, colors.lightgrey),
+        ('TOPPADDING', (0,0), (-1,-1), 1.5*mm),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1.5*mm),
+    ]))
+    contenido.append(tabla_info)
+    contenido.append(Spacer(1, 4*mm))
+
+    # TABLA DE DESPIECE
+    contenido.append(Paragraph("DESPIECE DE EQUIPO", ESTILO_SUBTITULO))
+
+    encabezados = [
+        Paragraph("#", ESTILO_HEADER_TABLA),
+        Paragraph("Código", ESTILO_HEADER_TABLA),
+        Paragraph("Descripción", ESTILO_HEADER_TABLA),
+        Paragraph("Cantidad", ESTILO_HEADER_TABLA),
+        Paragraph("Peso Unit. kg", ESTILO_HEADER_TABLA),
+        Paragraph("Peso Total kg", ESTILO_HEADER_TABLA),
+    ]
+    filas = [encabezados]
+    total_piezas = 0
+    total_peso   = 0
+    for idx, item in enumerate(items, 1):
+        cant  = item['cantidad']
+        peso_u = float(item['peso_unitario'] or 0)
+        peso_t = float(item['peso_total'] or 0)
+        total_piezas += cant
+        total_peso   += peso_t
+        filas.append([
+            Paragraph(str(idx), ESTILO_CELDA),
+            Paragraph(item['codigo'], ESTILO_CELDA),
+            Paragraph(item['producto_nombre'], ESTILO_NORMAL),
+            Paragraph(str(cant), ESTILO_CELDA),
+            Paragraph(f"{peso_u:.2f}", ESTILO_CELDA),
+            Paragraph(f"{peso_t:.2f}", ESTILO_CELDA),
+        ])
+
+    # Fila totales
+    filas.append([
+        Paragraph("", ESTILO_CELDA),
+        Paragraph("", ESTILO_CELDA),
+        Paragraph("<b>TOTALES</b>", ParagraphStyle(
+            'Total', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_RIGHT
+        )),
+        Paragraph(f"<b>{total_piezas}</b>", ParagraphStyle(
+            'TotalN', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_CENTER
+        )),
+        Paragraph("", ESTILO_CELDA),
+        Paragraph(f"<b>{total_peso:.2f}</b>", ParagraphStyle(
+            'TotalP', fontName='Helvetica-Bold', fontSize=9,
+            textColor=COLOR_PRIMARIO, alignment=TA_CENTER
+        )),
+    ])
+
+    tabla_items = Table(
+        filas,
+        colWidths=[8*mm, 22*mm, 70*mm, 18*mm, 22*mm, 22*mm]
+    )
+    tabla_items.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARIO),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ROWBACKGROUNDS', (0,1), (-1,-2), [colors.white, COLOR_GRIS]),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#eaf4fb')),
+        ('GRID', (0,0), (-1,-1), 0.3, colors.lightgrey),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2*mm),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2*mm),
+    ]))
+    contenido.append(tabla_items)
+    contenido.append(Spacer(1, 6*mm))
+
+    # OBSERVACIONES
+    if hs.get('observaciones'):
+        contenido.append(Paragraph("OBSERVACIONES", ESTILO_SUBTITULO))
+        contenido.append(Paragraph(hs['observaciones'], ESTILO_NORMAL))
+        contenido.append(Spacer(1, 4*mm))
+
+    # FIRMA
+    contenido.append(HRFlowable(width="100%", thickness=0.5,
+                                color=colors.lightgrey, spaceAfter=6*mm))
+    datos_firma = [
+        [
+            Paragraph("_______________________________", ESTILO_NORMAL),
+            Paragraph("_______________________________", ESTILO_NORMAL),
+        ],
+        [
+            Paragraph(f"<b>{EMPRESA['nombre']}</b>", ESTILO_NORMAL),
+            Paragraph(f"<b>{hs['cliente_nombre']}</b>", ESTILO_NORMAL),
+        ],
+        [
+            Paragraph("Entrega", ESTILO_SMALL),
+            Paragraph("Recibe — Firma y sello", ESTILO_SMALL),
+        ],
+    ]
+    tabla_firma = Table(datos_firma, colWidths=[87*mm, 87*mm])
+    tabla_firma.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('TOPPADDING', (0,0), (-1,-1), 2*mm),
+    ]))
+    contenido.append(tabla_firma)
+
+    # PIE
+    contenido.append(Spacer(1, 4*mm))
+    contenido.append(HRFlowable(width="100%", thickness=0.5,
+                                color=colors.lightgrey, spaceAfter=2*mm))
+    contenido.append(Paragraph(
+        f"Hoja de Salida {hs['folio']} | Contrato {hs['contrato_folio']} | "
+        f"{EMPRESA['nombre']} | {EMPRESA['telefono']}",
+        ESTILO_SMALL
+    ))
+
+    doc.build(contenido)
+    buffer.seek(0)
+    return buffer.getvalue()
