@@ -1103,8 +1103,8 @@ def generar_pdf_recibo(datos):
     story = []
 
     # Encabezado
-    story.append(Paragraph("ICAM", style_titulo))
-    story.append(Paragraph("Renta y Venta de Andamios", style_sub))
+    story.append(Paragraph(EMPRESA['nombre'], style_titulo))
+    story.append(Paragraph(EMPRESA['direccion'], style_sub))
     story.append(Spacer(1, 0.3*cm))
 
     # Folio y fecha
