@@ -1909,3 +1909,188 @@ def get_facturacion_periodo(fecha_inicio, fecha_fin):
     cur.close()
     conn.close()
     return row
+
+# ================================================
+# ANTICIPOS / PAGOS
+# ================================================
+
+def generar_folio_anticipo():
+    """Genera folio PAG-0001"""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_anticipo()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_anticipo(datos):
+    """Registra un pago"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO fin_anticipos (
+                folio, contrato_id, cliente_id,
+                tipo_pago, monto, fecha_pago,
+                referencia_bancaria, concepto, estatus
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos['contrato_id'],
+            datos['cliente_id'],
+            datos['tipo_pago'],
+            datos['monto'],
+            datos['fecha_pago'],
+            datos.get('referencia_bancaria'),
+            datos.get('concepto'),
+            datos.get('estatus', 'registrado')
+        ))
+        anticipo_id = cur.fetchone()[0]
+
+        # Actualizar anticipo_pagado y estatus en el contrato
+        cur.execute("""
+            UPDATE ops_contratos SET
+                anticipo_pagado = (
+                    SELECT COALESCE(SUM(monto), 0)
+                    FROM fin_anticipos
+                    WHERE contrato_id = %s
+                    AND estatus != 'cancelado'
+                ),
+                anticipo_estatus = CASE
+                    WHEN (
+                        SELECT COALESCE(SUM(monto), 0)
+                        FROM fin_anticipos
+                        WHERE contrato_id = %s
+                        AND estatus != 'cancelado'
+                    ) >= anticipo_requerido THEN 'completo'
+                    WHEN (
+                        SELECT COALESCE(SUM(monto), 0)
+                        FROM fin_anticipos
+                        WHERE contrato_id = %s
+                        AND estatus != 'cancelado'
+                    ) > 0 THEN 'parcial'
+                    ELSE 'pendiente'
+                END,
+                updated_at = NOW()
+            WHERE id = %s
+        """, (
+            datos['contrato_id'],
+            datos['contrato_id'],
+            datos['contrato_id'],
+            datos['contrato_id']
+        ))
+
+        conn.commit()
+        return anticipo_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_anticipos(contrato_id=None, cliente_id=None, estatus=None):
+    """Lista de pagos con filtros opcionales"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    filtros = []
+    valores = []
+    if contrato_id:
+        filtros.append("contrato_id = %s")
+        valores.append(contrato_id)
+    if cliente_id:
+        filtros.append("cliente_id = %s")
+        valores.append(cliente_id)
+    if estatus:
+        filtros.append("estatus = %s")
+        valores.append(estatus)
+    where = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+    cur.execute(f"SELECT * FROM v_anticipos {where}", valores)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_pagos_por_contrato(contrato_id):
+    """Resumen de pagos de un contrato"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_pagos_por_contrato
+        WHERE contrato_id = %s
+    """, (contrato_id,))
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    return row
+
+
+def get_contratos_con_saldo():
+    """Contratos activos con saldo pendiente"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_pagos_por_contrato
+        WHERE saldo_pendiente > 0
+        ORDER BY saldo_pendiente DESC
+    """)
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def actualizar_estatus_anticipo(anticipo_id, estatus):
+    """Cambia estatus de un pago (verificado/cancelado)"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE fin_anticipos SET
+                estatus    = %s,
+                updated_at = NOW()
+            WHERE id = %s
+            RETURNING contrato_id
+        """, (estatus, anticipo_id))
+        contrato_id = cur.fetchone()[0]
+
+        # Recalcular anticipo_pagado en el contrato
+        cur.execute("""
+            UPDATE ops_contratos SET
+                anticipo_pagado = (
+                    SELECT COALESCE(SUM(monto), 0)
+                    FROM fin_anticipos
+                    WHERE contrato_id = %s
+                    AND estatus != 'cancelado'
+                ),
+                anticipo_estatus = CASE
+                    WHEN (
+                        SELECT COALESCE(SUM(monto), 0)
+                        FROM fin_anticipos
+                        WHERE contrato_id = %s
+                        AND estatus != 'cancelado'
+                    ) >= anticipo_requerido THEN 'completo'
+                    WHEN (
+                        SELECT COALESCE(SUM(monto), 0)
+                        FROM fin_anticipos
+                        WHERE contrato_id = %s
+                        AND estatus != 'cancelado'
+                    ) > 0 THEN 'parcial'
+                    ELSE 'pendiente'
+                END,
+                updated_at = NOW()
+            WHERE id = %s
+        """, (contrato_id, contrato_id, contrato_id, contrato_id))
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()

@@ -30,7 +30,7 @@ styles = getSampleStyleSheet()
 ESTILO_TITULO = ParagraphStyle(
     'Titulo',
     fontName='Helvetica-Bold',
-    fontSize=20,
+    fontSize=15,
     textColor=COLOR_PRIMARIO,
     alignment=TA_LEFT,
     spaceAfter=2*mm
@@ -1054,5 +1054,208 @@ def generar_pdf_hoja_salida(hs, items):
     ))
 
     doc.build(contenido)
+    buffer.seek(0)
+    return buffer.getvalue()
+
+def generar_pdf_recibo(datos):
+    """
+    Genera recibo de pago en PDF.
+    datos: dict con folio, contrato_folio, cliente_nombre, cliente_rfc,
+           tipo_pago, monto, fecha_pago, referencia_bancaria, concepto,
+           total_contrato, total_pagado, saldo_pendiente
+    """
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib import colors
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+    import io
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        rightMargin=2*cm, leftMargin=2*cm,
+        topMargin=2*cm, bottomMargin=2*cm
+    )
+
+    styles = getSampleStyleSheet()
+    AZUL   = colors.HexColor('#1E40AF')
+    GRIS   = colors.HexColor('#F1F5F9')
+    VERDE  = colors.HexColor('#10B981')
+
+    style_titulo = ParagraphStyle(
+        'titulo', fontSize=20, textColor=AZUL,
+        alignment=TA_CENTER, fontName='Helvetica-Bold', spaceAfter=4
+    )
+    style_sub = ParagraphStyle(
+        'sub', fontSize=10, textColor=colors.HexColor('#64748B'),
+        alignment=TA_CENTER, spaceAfter=2
+    )
+    style_normal = ParagraphStyle(
+        'normal', fontSize=9, fontName='Helvetica', spaceAfter=4
+    )
+    style_bold = ParagraphStyle(
+        'bold', fontSize=9, fontName='Helvetica-Bold', spaceAfter=4
+    )
+
+    story = []
+
+    # Encabezado
+    story.append(Paragraph("ICAM", style_titulo))
+    story.append(Paragraph("Renta y Venta de Andamios", style_sub))
+    story.append(Spacer(1, 0.3*cm))
+
+    # Folio y fecha
+    fecha_str = datos['fecha_pago'].strftime('%d/%m/%Y') \
+                if hasattr(datos['fecha_pago'], 'strftime') \
+                else str(datos['fecha_pago'])
+
+    encabezado = Table([
+        [
+            Paragraph(f"<b>RECIBO DE PAGO</b>", ParagraphStyle(
+                'rp', fontSize=14, textColor=AZUL, fontName='Helvetica-Bold'
+            )),
+            Paragraph(
+                f"<b>Folio:</b> {datos['folio']}<br/>"
+                f"<b>Fecha:</b> {fecha_str}",
+                ParagraphStyle('right', fontSize=9, alignment=TA_RIGHT)
+            )
+        ]
+    ], colWidths=[10*cm, 7*cm])
+    encabezado.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 8),
+    ]))
+    story.append(encabezado)
+    story.append(Spacer(1, 0.3*cm))
+
+    # Datos cliente y contrato
+    datos_tabla = Table([
+        [
+            Paragraph("<b>DATOS DEL CLIENTE</b>", ParagraphStyle(
+                'h', fontSize=9, fontName='Helvetica-Bold', textColor=AZUL
+            )),
+            Paragraph("<b>DATOS DEL CONTRATO</b>", ParagraphStyle(
+                'h', fontSize=9, fontName='Helvetica-Bold', textColor=AZUL
+            ))
+        ],
+        [
+            Paragraph(
+                f"<b>Cliente:</b> {datos['cliente_nombre']}<br/>"
+                f"<b>RFC:</b> {datos.get('cliente_rfc') or '—'}",
+                style_normal
+            ),
+            Paragraph(
+                f"<b>Contrato:</b> {datos['contrato_folio']}<br/>"
+                f"<b>Tipo pago:</b> {datos['tipo_pago']}",
+                style_normal
+            )
+        ]
+    ], colWidths=[8.5*cm, 8.5*cm])
+    datos_tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), GRIS),
+        ('GRID',       (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('PADDING',    (0,0), (-1,-1), 8),
+        ('VALIGN',     (0,0), (-1,-1), 'TOP'),
+    ]))
+    story.append(datos_tabla)
+    story.append(Spacer(1, 0.5*cm))
+
+    # Detalle del pago
+    story.append(Paragraph("<b>DETALLE DEL PAGO</b>", ParagraphStyle(
+        'h2', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, spaceAfter=6
+    )))
+
+    detalle = Table([
+        ['Concepto', 'Detalle'],
+        ['Referencia bancaria', datos.get('referencia_bancaria') or '—'],
+        ['Concepto / nota',     datos.get('concepto') or '—'],
+        ['Fecha de pago',       fecha_str],
+    ], colWidths=[5*cm, 12*cm])
+    detalle.setStyle(TableStyle([
+        ('BACKGROUND',  (0,0), (-1,0), AZUL),
+        ('TEXTCOLOR',   (0,0), (-1,0), colors.white),
+        ('FONTNAME',    (0,0), (-1,0), 'Helvetica-Bold'),
+        ('FONTSIZE',    (0,0), (-1,-1), 9),
+        ('GRID',        (0,0), (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('BACKGROUND',  (0,1), (-1,-1), colors.white),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, GRIS]),
+        ('PADDING',     (0,0), (-1,-1), 8),
+    ]))
+    story.append(detalle)
+    story.append(Spacer(1, 0.5*cm))
+
+    # Monto destacado
+    monto_tabla = Table([[
+        Paragraph(
+            f"<b>MONTO RECIBIDO</b>",
+            ParagraphStyle('ml', fontSize=12, fontName='Helvetica-Bold',
+                           textColor=colors.white, alignment=TA_LEFT)
+        ),
+        Paragraph(
+            f"<b>${float(datos['monto']):,.2f} MXN</b>",
+            ParagraphStyle('mr', fontSize=16, fontName='Helvetica-Bold',
+                           textColor=colors.white, alignment=TA_RIGHT)
+        )
+    ]], colWidths=[8*cm, 9*cm])
+    monto_tabla.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), VERDE),
+        ('PADDING',    (0,0), (-1,-1), 12),
+        ('ROUNDEDCORNERS', [6]),
+    ]))
+    story.append(monto_tabla)
+    story.append(Spacer(1, 0.5*cm))
+
+    # Resumen financiero
+    story.append(Paragraph("<b>RESUMEN FINANCIERO DEL CONTRATO</b>", ParagraphStyle(
+        'h3', fontSize=10, fontName='Helvetica-Bold', textColor=AZUL, spaceAfter=6
+    )))
+
+    saldo = float(datos.get('saldo_pendiente') or 0)
+    resumen = Table([
+        ['Concepto',            'Monto'],
+        ['Total del contrato',  f"${float(datos['total_contrato']):,.2f}"],
+        ['Total pagado',        f"${float(datos['total_pagado']):,.2f}"],
+        ['Saldo pendiente',     f"${max(saldo, 0):,.2f}"],
+    ], colWidths=[8*cm, 9*cm])
+    resumen.setStyle(TableStyle([
+        ('BACKGROUND',     (0,0),  (-1,0),  AZUL),
+        ('TEXTCOLOR',      (0,0),  (-1,0),  colors.white),
+        ('FONTNAME',       (0,0),  (-1,0),  'Helvetica-Bold'),
+        ('FONTSIZE',       (0,0),  (-1,-1), 9),
+        ('GRID',           (0,0),  (-1,-1), 0.5, colors.HexColor('#CBD5E1')),
+        ('ROWBACKGROUNDS', (0,1),  (-1,-1), [colors.white, GRIS]),
+        ('PADDING',        (0,0),  (-1,-1), 8),
+        ('FONTNAME',       (0,-1), (-1,-1), 'Helvetica-Bold'),
+        ('TEXTCOLOR',      (0,-1), (-1,-1),
+         VERDE if saldo <= 0 else colors.HexColor('#EF4444')),
+    ]))
+    story.append(resumen)
+    story.append(Spacer(1, 1*cm))
+
+    # Pie
+    if saldo <= 0:
+        story.append(Paragraph(
+            "✅ <b>CONTRATO LIQUIDADO</b> — Gracias por su pago.",
+            ParagraphStyle('pie', fontSize=10, fontName='Helvetica-Bold',
+                           textColor=VERDE, alignment=TA_CENTER)
+        ))
+    else:
+        story.append(Paragraph(
+            f"Saldo pendiente: <b>${max(saldo,0):,.2f} MXN</b>",
+            ParagraphStyle('pie', fontSize=9, alignment=TA_CENTER,
+                           textColor=colors.HexColor('#64748B'))
+        ))
+
+    story.append(Spacer(1, 1*cm))
+    story.append(Paragraph(
+        "Este documento es un comprobante interno de pago.",
+        ParagraphStyle('nota', fontSize=8, textColor=colors.HexColor('#94A3B8'),
+                       alignment=TA_CENTER)
+    ))
+
+    doc.build(story)
     buffer.seek(0)
     return buffer.getvalue()

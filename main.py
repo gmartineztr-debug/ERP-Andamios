@@ -15,7 +15,7 @@ from utils.database import (
 )
 
 st.set_page_config(
-    page_title="ICAM ERP",
+    page_title="Andamios ERP",
     page_icon="🏗️",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -82,7 +82,7 @@ div[data-testid="metric-container"] div[data-testid="stMetricValue"] {
 # ─── Encabezado ─────────────────────────────────────────────────────────────
 col_titulo, col_periodo = st.columns([3, 2])
 with col_titulo:
-    st.markdown("## 🏗️ ICAM ERP — Dashboard")
+    st.markdown("## 🏗️ Andamios ERP — Dashboard")
     st.caption(f"Actualizado: {date.today().strftime('%d de %B de %Y')}")
 
 with col_periodo:
