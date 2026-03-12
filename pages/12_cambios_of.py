@@ -40,7 +40,7 @@ with tab_nueva:
     ofs = get_ordenes_fabricacion()
     ofs_activas = [
         o for o in ofs
-        if o['estatus'] in ('pendiente', 'en_proceso')
+        if o['estatus'] in ('abierta', 'espera_materiales', 'en_fabricacion')
     ]
 
     if not ofs_activas:
@@ -108,12 +108,12 @@ with tab_nueva:
                         f"**{item.get('codigo','—')} — {item.get('nombre','—')}**"
                     )
                 with col2:
-                    st.caption(f"Planeado: {item.get('cantidad', 0)}")
+                    st.caption(f"Planeado: {item.get('cantidad_solicitada', 0)}")
                 with col3:
                     fab = st.number_input(
                         "Fabricado",
                         min_value=0,
-                        max_value=int(item.get('cantidad', 0)),
+                        max_value=int(item.get('cantidad_solicitada', 0)),
                         value=0,
                         step=1,
                         label_visibility="collapsed",
@@ -121,7 +121,7 @@ with tab_nueva:
                     )
                 sc_items.append({
                     'producto_id'       : item['producto_id'],
-                    'cantidad_planeada' : item['cantidad'],
+                    'cantidad_planeada' : item['cantidad_solicitada'],
                     'cantidad_fabricada': fab
                 })
 
@@ -234,7 +234,7 @@ with tab_nueva:
                                 'folio'         : folio_nueva,
                                 'fecha_apertura': date.today(),
                                 'notas'         : f"Continuación de {of_data['folio']} — SC: {folio_sc}",
-                                'estatus'       : 'en proceso'
+                                'estatus'       : 'abierta'
                             }, items_nueva_of)
 
                     sc_id = crear_sc(

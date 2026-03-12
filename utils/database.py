@@ -2169,9 +2169,6 @@ def registrar_ajuste_manual(producto_id, notas, usuario="sistema"):
     cur = conn.cursor()
     try:
         cur.execute("""
-            SELECT generar_folio_anticipo()
-        """)
-        cur.execute("""
             INSERT INTO inv_bitacora (
                 producto_id, tipo_movimiento,
                 referencia_tipo, notas
@@ -2452,14 +2449,9 @@ def actualizar_conteo_item(item_id, fisico_disp, fisico_mant,
 
 
 def aplicar_ajuste_conteo(conteo_id):
-    """
-    Aplica los valores físicos al inventario real.
-    Solo aplica ítems con diferencia y sin ajuste previo.
-    """
     conn = get_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Obtener items con diferencia
         cur.execute("""
             SELECT * FROM inv_conteo_items
             WHERE conteo_id = %s
@@ -2479,18 +2471,17 @@ def aplicar_ajuste_conteo(conteo_id):
                     updated_at             = NOW()
                 WHERE producto_id = %s
             """, (
-                item[5],   # fisico_disponible
-                item[6],   # fisico_mantenimiento
-                item[7],   # fisico_chatarra
-                item[2]    # producto_id
+                item['fisico_disponible'],
+                item['fisico_mantenimiento'],
+                item['fisico_chatarra'],
+                item['producto_id']
             ))
             cur.execute("""
                 UPDATE inv_conteo_items SET
                     ajuste_aplicado = TRUE
                 WHERE id = %s
-            """, (item[0],))
+            """, (item['id'],))
 
-        # Cerrar conteo
         cur.execute("""
             UPDATE inv_conteos SET
                 estatus    = 'cerrado',
