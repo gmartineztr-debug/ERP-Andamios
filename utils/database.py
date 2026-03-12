@@ -1,6 +1,8 @@
 # utils/database.py
 # Conexión centralizada a Supabase
 
+from datetime import date
+
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
@@ -620,13 +622,35 @@ def crear_contrato(datos, items):
                 item['subtotal']
             ))
 
-        # Actualizar estatus cotización a 'en_revision'
+# Actualizar estatus cotización a 'en_revision'
         if datos.get('cotizacion_id'):
             cur.execute("""
                 UPDATE crm_cotizaciones
                 SET estatus = 'en_revision', updated_at = NOW()
                 WHERE id = %s
             """, (datos['cotizacion_id'],))
+
+        # Crear registro en fin_anticipos si hay pago inicial
+        if datos.get('anticipo_pagado') and float(datos['anticipo_pagado']) > 0:
+            cur.execute("SELECT generar_folio_anticipo()")
+            folio_ant = cur.fetchone()[0]
+            cur.execute("""
+                INSERT INTO fin_anticipos (
+                    folio, contrato_id, cliente_id,
+                    tipo_pago, monto, fecha_pago,
+                    referencia_bancaria, concepto, estatus
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                folio_ant,
+                contrato_id,
+                datos['cliente_id'],
+                'anticipo',
+                float(datos['anticipo_pagado']),
+                datos.get('anticipo_fecha_pago') or date.today(),
+                datos.get('anticipo_referencia'),
+                'Anticipo inicial al firmar contrato',
+                'verificado'
+            ))
 
         conn.commit()
         return contrato_id
@@ -2094,3 +2118,416 @@ def actualizar_estatus_anticipo(anticipo_id, estatus):
     finally:
         cur.close()
         conn.close()
+    
+# ================================================
+# BITÁCORA DE INVENTARIO
+# ================================================
+
+def get_bitacora(producto_id=None, tipo=None, limite=100):
+    """Lista de movimientos de inventario"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    filtros = []
+    valores = []
+    if producto_id:
+        filtros.append("producto_id = %s")
+        valores.append(producto_id)
+    if tipo:
+        filtros.append("tipo_movimiento = %s")
+        valores.append(tipo)
+    where = ("WHERE " + " AND ".join(filtros)) if filtros else ""
+    cur.execute(f"""
+        SELECT * FROM v_inv_bitacora
+        {where}
+        ORDER BY fecha DESC
+        LIMIT %s
+    """, valores + [limite])
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_bitacora_producto(producto_id):
+    """Historial completo de un producto"""
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_inv_bitacora
+        WHERE producto_id = %s
+        ORDER BY fecha DESC
+    """, (producto_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def registrar_ajuste_manual(producto_id, notas, usuario="sistema"):
+    """Registra un ajuste manual en la bitácora"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            SELECT generar_folio_anticipo()
+        """)
+        cur.execute("""
+            INSERT INTO inv_bitacora (
+                producto_id, tipo_movimiento,
+                referencia_tipo, notas
+            ) VALUES (%s, 'ajuste_manual', 'MANUAL', %s)
+        """, (producto_id, notas))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+        
+# ================================================
+# SOLICITUDES DE CAMBIO DE OF
+# ================================================
+
+def generar_folio_sc():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_sc()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_sc(datos, items, materiales):
+    """Crea una Solicitud de Cambio de OF"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO fab_solicitudes_cambio (
+                folio, of_origen_id, of_nueva_id,
+                motivo, avance_descr, estatus, fecha, notas
+            ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos['of_origen_id'],
+            datos.get('of_nueva_id'),
+            datos['motivo'],
+            datos.get('avance_descr'),
+            datos.get('estatus', 'borrador'),
+            datos['fecha'],
+            datos.get('notas')
+        ))
+        sc_id = cur.fetchone()[0]
+
+        # Items — avance por producto
+        for item in items:
+            cur.execute("""
+                INSERT INTO fab_sc_items (
+                    sc_id, producto_id,
+                    cantidad_planeada, cantidad_fabricada
+                ) VALUES (%s,%s,%s,%s)
+            """, (
+                sc_id,
+                item['producto_id'],
+                item['cantidad_planeada'],
+                item['cantidad_fabricada']
+            ))
+
+        # Materiales — balance
+        for mat in materiales:
+            cur.execute("""
+                INSERT INTO fab_sc_materiales (
+                    sc_id, insumo_id,
+                    cantidad_estimada_uso, cantidad_real_uso,
+                    cantidad_sobrante, destino_sobrante, notas
+                ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (
+                sc_id,
+                mat['insumo_id'],
+                mat.get('cantidad_estimada_uso', 0),
+                mat.get('cantidad_real_uso'),
+                mat.get('cantidad_sobrante'),
+                mat.get('destino_sobrante', 'desconocido'),
+                mat.get('notas')
+            ))
+
+        # Marcar OF origen como modificada
+        cur.execute("""
+            UPDATE fab_ordenes SET
+                estatus    = 'modificada',
+                updated_at = NOW()
+            WHERE id = %s
+        """, (datos['of_origen_id'],))
+
+        conn.commit()
+        return sc_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_solicitudes_cambio():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_solicitudes_cambio")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_sc_detalle(sc_id):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT * FROM v_solicitudes_cambio WHERE id = %s
+    """, (sc_id,))
+    sc = cur.fetchone()
+
+    cur.execute("""
+        SELECT
+            si.*, p.codigo, p.nombre AS producto_nombre
+        FROM fab_sc_items si
+        JOIN cat_productos p ON si.producto_id = p.id
+        WHERE si.sc_id = %s
+    """, (sc_id,))
+    items = cur.fetchall()
+
+    cur.execute("""
+        SELECT
+            sm.*, i.codigo, i.nombre AS insumo_nombre, i.unidad
+        FROM fab_sc_materiales sm
+        JOIN fab_insumos i ON sm.insumo_id = i.id
+        WHERE sm.sc_id = %s
+    """, (sc_id,))
+    materiales = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return sc, items, materiales
+
+
+def actualizar_estatus_sc(sc_id, estatus, of_nueva_id=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE fab_solicitudes_cambio SET
+                estatus    = %s,
+                of_nueva_id = COALESCE(%s, of_nueva_id),
+                updated_at = NOW()
+            WHERE id = %s
+        """, (estatus, of_nueva_id, sc_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+# ================================================
+# CONTEO FÍSICO
+# ================================================
+
+def generar_folio_conteo():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT generar_folio_conteo()")
+    folio = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return folio
+
+
+def crear_conteo(datos):
+    """Crea un conteo físico y precarga con valores del sistema"""
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO inv_conteos (
+                folio, fecha, periodo,
+                estatus, responsable, notas
+            ) VALUES (%s,%s,%s,%s,%s,%s)
+            RETURNING id
+        """, (
+            datos['folio'],
+            datos['fecha'],
+            datos['periodo'],
+            'en_proceso',
+            datos.get('responsable'),
+            datos.get('notas')
+        ))
+        conteo_id = cur.fetchone()[0]
+
+        # Precargar todos los productos con valores actuales del sistema
+        cur.execute("""
+            INSERT INTO inv_conteo_items (
+                conteo_id, producto_id,
+                sistema_disponible, sistema_mantenimiento, sistema_chatarra,
+                fisico_disponible, fisico_mantenimiento, fisico_chatarra
+            )
+            SELECT
+                %s,
+                im.producto_id,
+                COALESCE(im.cantidad_disponible, 0),
+                COALESCE(im.cantidad_mantenimiento, 0),
+                COALESCE(im.cantidad_chatarra, 0),
+                COALESCE(im.cantidad_disponible, 0),
+                COALESCE(im.cantidad_mantenimiento, 0),
+                COALESCE(im.cantidad_chatarra, 0)
+            FROM inv_master im
+            JOIN cat_productos p ON im.producto_id = p.id
+            WHERE p.activo = TRUE
+            ORDER BY p.codigo
+        """, (conteo_id,))
+
+        conn.commit()
+        return conteo_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def get_conteos():
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("SELECT * FROM v_conteos ORDER BY fecha DESC")
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def get_conteo_items(conteo_id):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT
+            ci.*,
+            p.codigo,
+            p.nombre AS producto_nombre
+        FROM inv_conteo_items ci
+        JOIN cat_productos p ON ci.producto_id = p.id
+        WHERE ci.conteo_id = %s
+        ORDER BY p.codigo
+    """, (conteo_id,))
+    rows = cur.fetchall()
+    cur.close()
+    conn.close()
+    return rows
+
+
+def actualizar_conteo_item(item_id, fisico_disp, fisico_mant,
+                            fisico_chat, justificacion):
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute("""
+            UPDATE inv_conteo_items SET
+                fisico_disponible    = %s,
+                fisico_mantenimiento = %s,
+                fisico_chatarra      = %s,
+                justificacion        = %s
+            WHERE id = %s
+        """, (fisico_disp, fisico_mant, fisico_chat, justificacion, item_id))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+
+
+def aplicar_ajuste_conteo(conteo_id):
+    """
+    Aplica los valores físicos al inventario real.
+    Solo aplica ítems con diferencia y sin ajuste previo.
+    """
+    conn = get_connection()
+    cur = conn.cursor()
+    try:
+        # Obtener items con diferencia
+        cur.execute("""
+            SELECT * FROM inv_conteo_items
+            WHERE conteo_id = %s
+            AND ajuste_aplicado = FALSE
+            AND (diff_disponible != 0
+                OR diff_mantenimiento != 0
+                OR diff_chatarra != 0)
+        """, (conteo_id,))
+        items = cur.fetchall()
+
+        for item in items:
+            cur.execute("""
+                UPDATE inv_master SET
+                    cantidad_disponible    = %s,
+                    cantidad_mantenimiento = %s,
+                    cantidad_chatarra      = %s,
+                    updated_at             = NOW()
+                WHERE producto_id = %s
+            """, (
+                item[5],   # fisico_disponible
+                item[6],   # fisico_mantenimiento
+                item[7],   # fisico_chatarra
+                item[2]    # producto_id
+            ))
+            cur.execute("""
+                UPDATE inv_conteo_items SET
+                    ajuste_aplicado = TRUE
+                WHERE id = %s
+            """, (item[0],))
+
+        # Cerrar conteo
+        cur.execute("""
+            UPDATE inv_conteos SET
+                estatus    = 'cerrado',
+                updated_at = NOW()
+            WHERE id = %s
+        """, (conteo_id,))
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cur.close()
+        conn.close()
+        
+def get_of_detalle(of_id):
+    conn = get_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute("""
+        SELECT *
+        FROM fab_ordenes
+        WHERE id = %s
+    """, (of_id,))
+    of_data = cur.fetchone()
+
+    cur.execute("""
+        SELECT
+            oi.*,
+            p.codigo,
+            p.nombre,
+            p.id AS producto_id
+        FROM fab_orden_items oi
+        JOIN cat_productos p ON oi.producto_id = p.id
+        WHERE oi.orden_id = %s
+    """, (of_id,))
+    items = cur.fetchall()
+
+    cur.close()
+    conn.close()
+    return of_data, items
