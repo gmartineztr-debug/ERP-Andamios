@@ -18,7 +18,8 @@ def get_bitacora(producto_id=None, tipo=None, limite=100):
             ORDER BY fecha DESC
             LIMIT %s
         """, valores + [limite])
-        return cur.fetchall()
+        res = cur.fetchall()
+        return res if res is not None else []
 
 def get_bitacora_producto(producto_id):
     """Historial completo de un producto"""
