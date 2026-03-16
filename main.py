@@ -26,6 +26,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# 2. Definición de páginas (definirlas aquí para que estén disponibles en el dashboard)
+pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon=":material/groups:")
+pg_productos = st.Page("pages/02_productos.py", title="Productos", icon=":material/inventory_2:")
+pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon=":material/assignment:")
+pg_obras = st.Page("pages/04_obras.py", title="Obras", icon=":material/foundation:")
+pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon=":material/description:")
+pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas De Salida", icon=":material/local_shipping:")
+pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon=":material/move_to_inbox:")
+pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon=":material/build:")
+pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon=":material/refresh:")
+pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon=":material/payments:")
+pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon=":material/bar_chart:")
+pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon=":material/sync_alt:")
+pg_usuarios = st.Page("pages/13_usuarios.py", title="Gestión de Usuarios", icon=":material/person_add:")
+
 def show_dashboard():
     # ─── Estilos ────────────────────────────────────────────────────────────────
     st.markdown("""
@@ -366,30 +381,31 @@ def show_dashboard():
                 for s in stock_crit[:3]:
                     st.caption(f"**{s['codigo']}**: {int(s['cantidad_disponible'])}/{int(s['stock_minimo'])}")
         st.markdown('<p class="seccion-titulo">Accesos rápidos</p>', unsafe_allow_html=True)
-        st.page_link("pages/03_cotizaciones.py",    label=":material/add_circle: Nueva cotización")
-        st.page_link("pages/05_contratos.py",       label=":material/description: Nuevo contrato")
-        st.page_link("pages/06_hojas_salida.py",    label=":material/local_shipping: Hoja de salida")
-        st.page_link("pages/07_hojas_entrada.py",   label=":material/move_to_inbox: Hoja de entrada")
-        st.page_link("pages/09_renovaciones.py",    label=":material/refresh: Renovaciones")
-        st.page_link("pages/08_fabricacion.py",     label=":material/build: Fabricación")
+        
+        # Obtener rol para filtrar accesos rápidos
+        rol = st.session_state.user_info.get('rol', 'operador')
+        
+        if rol in ['admin', 'ventas', 'operador']:
+            st.page_link(pg_cotizaciones, label=":material/add_circle: Nueva cotización")
+        
+        if rol in ['admin', 'finanzas']:
+            st.page_link(pg_contratos, label=":material/description: Nuevo contrato")
+        
+        if rol in ['admin', 'finanzas', 'logistica', 'operador']:
+            st.page_link(pg_hojas_salida, label=":material/local_shipping: Hoja de salida")
+            st.page_link(pg_hojas_entrada, label=":material/move_to_inbox: Hoja de entrada")
+        
+        if rol in ['admin', 'finanzas']:
+            st.page_link(pg_renovaciones, label=":material/refresh: Renovaciones")
+        
+        if rol in ['admin', 'logistica', 'operador']:
+            st.page_link(pg_fabricacion, label=":material/build: Fabricación")
 
 # Inicializar Auth
 init_auth()
 
 # 3. Preparar páginas
 pg_dashboard = st.Page(show_dashboard, title="Dashboard", icon=":material/dashboard:", default=True)
-pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon=":material/groups:")
-pg_productos = st.Page("pages/02_productos.py", title="Productos", icon=":material/inventory_2:")
-pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon=":material/assignment:")
-pg_obras = st.Page("pages/04_obras.py", title="Obras", icon=":material/foundation:")
-pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon=":material/description:")
-pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas De Salida", icon=":material/local_shipping:")
-pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon=":material/move_to_inbox:")
-pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon=":material/build:")
-pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon=":material/refresh:")
-pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon=":material/payments:")
-pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon=":material/bar_chart:")
-pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon=":material/sync_alt:")
 
 if not st.session_state.authenticated:
     pg = st.navigation([st.Page(login_screen, title="Iniciar Sesión", icon=":material/lock:")])
@@ -402,12 +418,53 @@ else:
             logout()
         st.divider()
 
-    pg = st.navigation({
-        "Principal": [pg_dashboard],
-        "Ventas y Clientes": [pg_clientes, pg_cotizaciones, pg_obras, pg_contratos],
-        "Logística e Inventario": [pg_productos, pg_inventario, pg_hojas_salida, pg_hojas_entrada],
-        "Operaciones": [pg_fabricacion, pg_cambios_of],
-        "Finanzas": [pg_renovaciones, pg_anticipos]
-    })
+    # Definir todas las páginas posibles
+    # Principal
+    sec_principal = [pg_dashboard]
+    
+    # Ventas y Clientes
+    sec_ventas = [pg_clientes, pg_cotizaciones, pg_obras]
+    
+    # Logística e Inventario
+    sec_logistica = [pg_productos, pg_inventario, pg_hojas_salida, pg_hojas_entrada]
+    
+    # Finanzas
+    sec_finanzas = [pg_contratos, pg_renovaciones, pg_anticipos]
+    
+    # Operaciones
+    sec_operaciones = [pg_fabricacion, pg_cambios_of]
+    
+    # Configuración
+    sec_config = [pg_usuarios]
+
+    # Construir mapa de navegación según rol
+    rol = st.session_state.user_info.get('rol', 'operador')
+    menu = {"Principal": sec_principal}
+
+    if rol == 'admin':
+        menu["Ventas y Clientes"] = sec_ventas
+        menu["Logística e Inventario"] = sec_logistica
+        menu["Finanzas"] = sec_finanzas
+        menu["Operaciones"] = sec_operaciones
+        menu["Configuración"] = sec_config
+        
+    elif rol == 'ventas':
+        menu["Ventas y Clientes"] = sec_ventas
+        
+    elif rol == 'finanzas':
+        menu["Finanzas"] = sec_finanzas
+        menu["Logística e Inventario"] = sec_logistica
+        
+    elif rol == 'logistica':
+        menu["Logística e Inventario"] = sec_logistica
+        menu["Operaciones"] = sec_operaciones
+        
+    elif rol == 'operador':
+        # Conservar el comportamiento anterior para 'operador' si existe
+        menu["Ventas y Clientes"] = sec_ventas
+        menu["Logística e Inventario"] = sec_logistica
+        menu["Operaciones"] = sec_operaciones
+
+    pg = st.navigation(menu)
 
 pg.run()

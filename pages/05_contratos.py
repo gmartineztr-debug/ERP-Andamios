@@ -68,6 +68,7 @@ with tab_seguimiento:
         df_base = pd.DataFrame(contratos_todos)
         df_base['fecha_fin'] = pd.to_datetime(df_base['fecha_fin']).dt.date
         df_base['atraso'] = df_base['fecha_fin'].apply(lambda x: max(0, (hoy - x).days))
+        df_atraso = df_base[df_base['atraso'] > 0].sort_values('atraso', ascending=False)
         
         # 1. Contratos con ATRASO
         st.markdown(f"#### :material/error: Contratos con Atraso ({len(df_atraso)})")
