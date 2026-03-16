@@ -16,7 +16,7 @@ from utils.database import (
     actualizar_estatus_anticipo
 )
 
-st.set_page_config(page_title="Anticipos - ICAM ERP", layout="wide")
+
 
 st.title("💰 Anticipos y Pagos")
 st.divider()

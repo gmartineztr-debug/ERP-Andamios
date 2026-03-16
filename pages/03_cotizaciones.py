@@ -14,7 +14,7 @@ from utils.database import (
     get_obras_por_cliente
 )
 
-st.set_page_config(page_title="Cotizaciones - ICAM ERP", layout="wide")
+
 
 st.title("📋 Cotizaciones")
 st.divider()

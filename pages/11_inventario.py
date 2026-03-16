@@ -15,8 +15,11 @@ from utils.database import (
     actualizar_conteo_item,
     aplicar_ajuste_conteo
 )
+from utils.reporting import export_to_csv, export_to_pdf
+from datetime import datetime
+from utils.auth_manager import check_permission
 
-st.set_page_config(page_title="Inventario - ICAM ERP", layout="wide")
+
 
 st.title("📦 Control de Inventario")
 st.divider()
@@ -118,6 +121,27 @@ with tab_bitacora:
             'Δ Mantenimiento', 'Δ Chatarra'
         ]
         st.dataframe(df_show, use_container_width=True, hide_index=True)
+
+        # Botones de exportación
+        col_ex_a, col_ex_b, col_ex_empty = st.columns([1, 1, 3])
+        with col_ex_a:
+            csv_data = export_to_csv(df_show)
+            st.download_button(
+                label="📥 Exportar Bitácora",
+                data=csv_data,
+                file_name=f"bitacora_inv_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+                mime="text/csv",
+                key="btn_inv_csv"
+            )
+        with col_ex_b:
+            pdf_data = export_to_pdf(df_show, title="Bitácora de Movimientos de Inventario")
+            st.download_button(
+                label="📄 PDF Bitácora",
+                data=pdf_data,
+                file_name=f"bitacora_inv_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                key="btn_inv_pdf"
+            )
 
         # Detalle de un movimiento
         if prod_id:
@@ -417,12 +441,15 @@ with tab_conteos:
                                 )
                             else:
                                 try:
-                                    aplicar_ajuste_conteo(cnt_id)
-                                    st.success(
-                                        "✅ Ajustes aplicados. Inventario actualizado. "
-                                        "Conteo cerrado."
-                                    )
-                                    st.rerun()
+                                    if check_permission('admin'):
+                                        aplicar_ajuste_conteo(cnt_id)
+                                        st.success(
+                                            "✅ Ajustes aplicados. Inventario actualizado. "
+                                            "Conteo cerrado."
+                                        )
+                                        st.rerun()
+                                    else:
+                                        st.error("🚫 No tienes permisos de administrador para aplicar ajustes.")
                                 except Exception as e:
                                     st.error(f"❌ Error: {e}")
                     else:

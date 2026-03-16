@@ -18,7 +18,7 @@ from utils.database import (
     crear_orden_fabricacion
 )
 
-st.set_page_config(page_title="Cambios de OF - ICAM ERP", layout="wide")
+
 
 st.title("🔄 Solicitudes de Cambio de OF")
 st.caption("Registra interrupciones, cambios de plan o cierres parciales de Órdenes de Fabricación.")

@@ -235,7 +235,7 @@ def crear_hoja_entrada(datos, items):
         conn.commit()
         return entrada_id
 
-def get_hojas_entrada(tipo=None):
+def get_hojas_entrada(tipo=None, contrato_id=None):
     """Retorna hojas de entrada"""
     with get_cursor() as (cur, conn):
         query = """
@@ -250,11 +250,19 @@ def get_hojas_entrada(tipo=None):
             LEFT JOIN crm_obras o       ON e.obra_id      = o.id
             LEFT JOIN prov_proveedores p ON e.proveedor_id = p.id
         """
+        filtros = []
+        valores = []
         if tipo:
-            query += " WHERE e.tipo_entrada = %s"
-            cur.execute(query + " ORDER BY e.created_at DESC", (tipo,))
-        else:
-            cur.execute(query + " ORDER BY e.created_at DESC")
+            filtros.append("e.tipo_entrada = %s")
+            valores.append(tipo)
+        if contrato_id:
+            filtros.append("e.contrato_id = %s")
+            valores.append(contrato_id)
+            
+        if filtros:
+            query += " WHERE " + " AND ".join(filtros)
+            
+        cur.execute(query + " ORDER BY e.created_at DESC", valores)
         return cur.fetchall()
 
 def get_hoja_entrada_detalle(entrada_id):

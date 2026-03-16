@@ -22,7 +22,7 @@ from utils.database import (
     crear_contrato_item
 )
 
-st.set_page_config(page_title="Hojas de Entrada - ICAM ERP", layout="wide")
+
 
 st.title("📦 Hojas de Entrada")
 st.divider()

@@ -16,7 +16,7 @@ from utils.database import (
     get_resumen_folio_raiz           # ← agregar
 )
 
-st.set_page_config(page_title="Renovaciones - ICAM ERP", layout="wide")
+
 
 st.title("🔄 Renovaciones de Contratos")
 st.divider()

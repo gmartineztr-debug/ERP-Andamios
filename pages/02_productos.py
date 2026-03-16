@@ -14,7 +14,7 @@ from utils.database import (
     guardar_bom_producto
 )
 
-st.set_page_config(page_title="Productos - ICAM ERP", layout="wide")
+
 
 st.title("📦 Productos")
 st.divider()

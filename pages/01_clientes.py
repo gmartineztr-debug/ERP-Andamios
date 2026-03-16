@@ -8,8 +8,9 @@ from utils.database import (
     get_cliente_by_id,
     actualizar_cliente
 )
+from utils.reporting import export_to_csv, export_to_pdf
 
-st.set_page_config(page_title="Clientes - ICAM ERP", layout="wide")
+
 
 st.title("👥 Clientes")
 st.divider()
@@ -52,6 +53,27 @@ with tab_lista:
         ]
         st.dataframe(df, use_container_width=True, hide_index=True)
         st.caption(f"Total: {len(clientes)} clientes")
+
+        # Botones de exportación
+        col_ex_a, col_ex_b, col_ex_empty = st.columns([1, 1, 3])
+        with col_ex_a:
+            csv_data = export_to_csv(df)
+            st.download_button(
+                label="📥 Descargar Excel",
+                data=csv_data,
+                file_name=f"clientes_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv",
+                key="btn_descarga_csv"
+            )
+        with col_ex_b:
+            pdf_data = export_to_pdf(df, title="Listado de Clientes")
+            st.download_button(
+                label="📄 Descargar PDF",
+                data=pdf_data,
+                file_name=f"clientes_{datetime.now().strftime('%Y%m%d')}.pdf",
+                mime="application/pdf",
+                key="btn_descarga_pdf"
+            )
 
 # ================================================
 # TAB 2 — NUEVO CLIENTE

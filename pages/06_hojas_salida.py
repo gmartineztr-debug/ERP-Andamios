@@ -15,7 +15,7 @@ from utils.database import (
     actualizar_estatus_salida
 )
 
-st.set_page_config(page_title="Hojas de Salida - ICAM ERP", layout="wide")
+
 
 st.title("🚚 Hojas de Salida")
 st.divider()

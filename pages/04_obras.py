@@ -14,7 +14,7 @@ from utils.database import (
     get_contratos_por_obra
 )
 
-st.set_page_config(page_title="Obras - ICAM ERP", layout="wide")
+
 
 st.title("🏗️ Obras")
 st.divider()

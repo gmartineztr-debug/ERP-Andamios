@@ -24,7 +24,7 @@ from utils.database import (
     crear_hoja_entrada
 )
 
-st.set_page_config(page_title="Fabricación - ICAM ERP", layout="wide")
+
 
 st.title("🔧 Fabricación")
 st.divider()

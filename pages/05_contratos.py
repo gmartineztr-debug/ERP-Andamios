@@ -17,10 +17,15 @@ from utils.database import (
     get_contrato_detalle,
     actualizar_estatus_contrato,
     registrar_anticipo_pago,
-    asignar_obra_contrato
+    asignar_obra_contrato,
+    get_hojas_salida,
+    get_hojas_entrada,
+    get_pagos_por_contrato
 )
+from utils.reporting import export_to_csv, export_to_pdf
+from utils.auth_manager import check_permission
 
-st.set_page_config(page_title="Contratos - ICAM ERP", layout="wide")
+
 
 st.title("📄 Contratos")
 st.divider()
@@ -40,12 +45,63 @@ TIPO_LABEL = {
     'armado': '🔧 Armado'
 }
 
-tab_cotizaciones, tab_lista, tab_nuevo, tab_detalle = st.tabs([
+tab_seguimiento, tab_cotizaciones, tab_lista, tab_nuevo, tab_detalle = st.tabs([
+    "📊 Seguimiento",
     "📋 Cotizaciones aprobadas",
     "📄 Lista de contratos",
     "➕ Nuevo contrato",
     "🔍 Ver detalle"
 ])
+
+# ================================================
+# TAB 0 — SEGUIMIENTO DE CONTRATOS (DASHBOARD)
+# ================================================
+with tab_seguimiento:
+    st.subheader("Tablero de Seguimiento de Contratos")
+    
+    contratos_todos = get_contratos(estatus='activo')
+    hoy = date.today()
+    
+    if not contratos_todos:
+        st.info("No hay contratos activos para monitorear.")
+    else:
+        df_base = pd.DataFrame(contratos_todos)
+        df_base['fecha_fin'] = pd.to_datetime(df_base['fecha_fin']).dt.date
+        df_base['atraso'] = df_base['fecha_fin'].apply(lambda x: max(0, (hoy - x).days))
+        
+        # 1. Contratos con ATRASO
+        df_atraso = df_base[df_base['atraso'] > 0].sort_values('atraso', ascending=False)
+        st.markdown(f"#### 🔴 Contratos con Atraso ({len(df_atraso)})")
+        if not df_atraso.empty:
+            df_atraso_display = df_atraso[['folio', 'cliente_nombre', 'atraso', 'fecha_fin', 'monto_total']]
+            df_atraso_display.columns = ['Folio', 'Cliente', 'Días Atraso', 'Venció el', 'Monto Total']
+            st.dataframe(df_atraso_display, use_container_width=True, hide_index=True)
+        else:
+            st.success("✅ No hay contratos con atraso.")
+            
+        st.divider()
+        
+        # 2. Contratos PROXIMOS A VENCER (Próximos 7 días)
+        df_vencer = df_base[(df_base['atraso'] == 0) & 
+                            (df_base['fecha_fin'] <= hoy + timedelta(days=7))].sort_values('fecha_fin')
+        st.markdown(f"#### 🟠 Próximos a Vencer (7 días) ({len(df_vencer)})")
+        if not df_vencer.empty:
+            df_vencer_display = df_vencer[['folio', 'cliente_nombre', 'fecha_fin', 'monto_total']]
+            df_vencer_display.columns = ['Folio', 'Cliente', 'Vence el', 'Monto Total']
+            st.dataframe(df_vencer_display, use_container_width=True, hide_index=True)
+        else:
+            st.info("No hay contratos venciendo en los próximos 7 días.")
+
+        st.divider()
+        
+        # 3. Acceso rápido a detalle
+        st.markdown("#### 🔍 Consulta rápida")
+        opciones_seg = {f"{c['folio']} — {c['cliente_nombre']}": c['id'] for c in contratos_todos}
+        sel_seg = st.selectbox("Selecciona un contrato para inspeccionar logística y pagos", list(opciones_seg.keys()), key="seg_quick")
+        if sel_seg:
+            if st.button("👁️ Ver detalle completo", key="btn_jump_detalle"):
+                st.session_state.contrato_id_detalle = opciones_seg[sel_seg]
+                st.info("Cargado. Cambia a la pestaña '🔍 Ver detalle' para inspeccionar.")
 
 # ================================================
 # TAB 1 — COTIZACIONES APROBADAS
@@ -347,7 +403,17 @@ with tab_detalle:
             f"{c['folio']} — {c['cliente_nombre']}": c['id']
             for c in contratos
         }
-        seleccion   = st.selectbox("Selecciona contrato", list(opciones.keys()))
+        if 'contrato_id_detalle' in st.session_state:
+            default_ix = 0
+            keys_list = list(opciones.keys())
+            for i, k in enumerate(keys_list):
+                if opciones[k] == st.session_state.contrato_id_detalle:
+                    default_ix = i
+                    break
+            seleccion = st.selectbox("Selecciona contrato", keys_list, index=default_ix)
+        else:
+            seleccion = st.selectbox("Selecciona contrato", list(opciones.keys()))
+        
         contrato_id = opciones[seleccion]
         try:
             ctr, items = get_contrato_detalle(contrato_id)
@@ -383,6 +449,41 @@ with tab_detalle:
                     'completo' : '✅ Completo'
                 }.get(ctr['anticipo_estatus'], '—')
                 st.markdown(f"**Estatus anticipo:** {ant_est}")
+
+            # RECOMENDACIÓN: Saldo pendiente
+            resumen_fin = get_pagos_por_contrato(contrato_id)
+            if resumen_fin:
+                saldo_p = float(resumen_fin.get('saldo_pendiente', 0))
+                color_saldo = "red" if saldo_p > 0 else "green"
+                st.markdown(f"**Saldo Pendiente:** <span style='color:{color_saldo};font-weight:bold'>${saldo_p:,.2f}</span>", unsafe_allow_html=True)
+            
+            st.divider()
+            
+            # SECCIÓN LOGÍSTICA
+            st.subheader("🚚 Flujo Logístico (Movimientos)")
+            col_log1, col_log2 = st.columns(2)
+            
+            with col_log1:
+                st.markdown("**Hojas de Salida (Entregas)**")
+                hs_list = get_hojas_salida(contrato_id)
+                if hs_list:
+                    for hs in hs_list:
+                        est = hs['estatus'].upper()
+                        color = "orange" if est == "PENDIENTE" else "green"
+                        st.markdown(f"- **{hs['folio']}** ({hs['fecha_salida'].strftime('%d/%m/%Y')}) — <span style='color:{color}'>{est}</span>", unsafe_allow_html=True)
+                else:
+                    st.caption("No hay salidas registradas.")
+            
+            with col_log2:
+                st.markdown("**Hojas de Entrada (Devoluciones)**")
+                he_list = get_hojas_entrada(contrato_id=contrato_id)
+                if he_list:
+                    for he in he_list:
+                        est = he['estatus'].upper()
+                        color = "orange" if est == "PENDIENTE" else "green"
+                        st.markdown(f"- **{he['folio']}** ({he['fecha_entrada'].strftime('%d/%m/%Y')}) — <span style='color:{color}'>{est}</span>", unsafe_allow_html=True)
+                else:
+                    st.caption("No hay entradas registradas.")
 
             st.divider()
 
@@ -436,9 +537,12 @@ with tab_detalle:
                     key="sel_estatus"
                 )
                 if st.button("Actualizar estatus"):
-                    actualizar_estatus_contrato(contrato_id, nuevo_estatus)
-                    st.success("✅ Estatus actualizado.")
-                    st.rerun()
+                    if check_permission('admin'):
+                        actualizar_estatus_contrato(contrato_id, nuevo_estatus)
+                        st.success("✅ Estatus actualizado.")
+                        st.rerun()
+                    else:
+                        st.error("🚫 No tienes permisos de administrador para cambiar estatus.")
 
             with col2:
                 st.markdown("**Asignar obra**")
@@ -462,9 +566,12 @@ with tab_detalle:
                         key="sel_obra"
                     )
                     if st.button("Asignar obra"):
-                        asignar_obra_contrato(contrato_id, opciones_obras[obra_nueva])
-                        st.success("✅ Obra asignada correctamente.")
-                        st.rerun()
+                        if check_permission('admin'):
+                            asignar_obra_contrato(contrato_id, opciones_obras[obra_nueva])
+                            st.success("✅ Obra asignada correctamente.")
+                            st.rerun()
+                        else:
+                            st.error("🚫 No tienes permisos de administrador para asignar obras.")
                 else:
                     st.caption("No hay obras activas.")
 
