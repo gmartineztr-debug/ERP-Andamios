@@ -18,26 +18,26 @@ from utils.database import (
 
 
 
-st.title("💰 Anticipos y Pagos")
+st.title(":material/payments: Anticipos y Pagos")
 st.divider()
 
 TIPO_PAGO_LABEL = {
-    'anticipo'   : '💳 Anticipo inicial',
-    'parcial'    : '🔶 Pago parcial',
-    'liquidacion': '✅ Liquidación'
+    'anticipo'   : 'Anticipo inicial',
+    'parcial'    : 'Pago parcial',
+    'liquidacion': 'Liquidación'
 }
 
 ESTATUS_LABEL = {
-    'registrado': '📝 Registrado',
-    'verificado': '✅ Verificado',
-    'cancelado' : '❌ Cancelado'
+    'registrado': 'Registrado',
+    'verificado': 'Verificado',
+    'cancelado' : 'Cancelado'
 }
 
 tab_nuevo, tab_saldos, tab_lista, tab_detalle = st.tabs([
-    "➕ Registrar Pago",
-    "⏳ Saldos Pendientes",
-    "📋 Lista De Pagos",
-    "🔍 Detalle Por Contrato"
+    ":material/add_card: Registrar Pago",
+    ":material/hourglass_empty: Saldos Pendientes",
+    ":material/list_alt: Lista De Pagos",
+    ":material/search: Detalle Por Contrato"
 ])
 
 # ================================================
@@ -72,7 +72,7 @@ with tab_nuevo:
 
         if ctr and resumen:
             # Resumen financiero del contrato
-            with st.expander("📊 Estado de pagos del contrato", expanded=True):
+            with st.expander(":material/query_stats: Estado de pagos del contrato", expanded=True):
                 col1, col2, col3, col4 = st.columns(4)
                 with col1:
                     st.metric("Total contrato",    f"${float(ctr['monto_total']):,.2f}")
@@ -84,7 +84,7 @@ with tab_nuevo:
                 with col4:
                     saldo = float(resumen['saldo_pendiente'] or 0)
                     if saldo <= 0:
-                        st.metric("Saldo pendiente", "$0.00 ✅")
+                        st.metric("Saldo pendiente", "$0.00")
                     else:
                         st.metric("Saldo pendiente", f"${saldo:,.2f}")
 
@@ -142,14 +142,14 @@ with tab_nuevo:
                 st.info(f"📊 Total pagado después de este pago: **${nuevo_pagado:,.2f}**")
             with col2:
                 if nuevo_saldo <= 0:
-                    st.success("✅ Contrato quedaría **liquidado**")
+                    st.success(":material/check_circle: Contrato quedaría **liquidado**")
                 else:
-                    st.warning(f"⏳ Saldo restante: **${nuevo_saldo:,.2f}**")
+                    st.warning(f":material/warning: Saldo restante: **${nuevo_saldo:,.2f}**")
 
             st.divider()
 
             if st.button(
-                "💾 Registrar pago",
+                ":material/save: Registrar pago",
                 type="primary",
                 use_container_width=True,
                 key="btn_crear_ant"
@@ -167,7 +167,7 @@ with tab_nuevo:
                         'concepto'           : concepto,
                         'estatus'            : estatus_pago
                     })
-                    st.success(f"✅ Pago {folio_ant} registrado correctamente.")
+                    st.success(f":material/check_circle: Pago {folio_ant} registrado correctamente.")
 
                     # Generar recibo PDF
                     try:
@@ -187,7 +187,7 @@ with tab_nuevo:
                             'saldo_pendiente'    : max(nuevo_saldo, 0)
                         })
                         st.download_button(
-                            label="⬇️ Descargar recibo PDF",
+                            label=":material/file_download: Descargar recibo PDF",
                             data=pdf_bytes,
                             file_name=f"Recibo_{folio_ant}.pdf",
                             mime="application/pdf"
@@ -197,7 +197,7 @@ with tab_nuevo:
 
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Error: {e}")
+                    st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 2 — SALDOS PENDIENTES
@@ -208,7 +208,7 @@ with tab_saldos:
     saldos = get_contratos_con_saldo()
 
     if not saldos:
-        st.success("✅ No hay contratos con saldo pendiente.")
+        st.success(":material/check_circle: No hay contratos con saldo pendiente.")
     else:
         # Métricas
         total_saldo = sum(float(s['saldo_pendiente'] or 0) for s in saldos)
@@ -407,7 +407,7 @@ with tab_detalle:
                     )
                     pago_rec = opciones_recibo[rec_sel]
 
-                    if st.button("📄 Generar recibo PDF", key="btn_rec_pdf"):
+                    if st.button(":material/picture_as_pdf: Generar recibo PDF", key="btn_rec_pdf"):
                         try:
                             from utils.pdf_generator import generar_pdf_recibo
                             resumen_rec = get_pagos_por_contrato(det_id)
@@ -426,7 +426,7 @@ with tab_detalle:
                                 'saldo_pendiente'    : float(resumen_rec['saldo_pendiente'] or 0)
                             })
                             st.download_button(
-                                label="⬇️ Descargar recibo",
+                                label=":material/file_download: Descargar recibo",
                                 data=pdf_bytes,
                                 file_name=f"Recibo_{pago_rec['folio']}.pdf",
                                 mime="application/pdf"

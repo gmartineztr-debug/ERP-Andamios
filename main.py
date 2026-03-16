@@ -21,7 +21,7 @@ from utils.auth_manager import init_auth, login_screen, logout
 # 1. Configuración de página (DEBE ser lo primero)
 st.set_page_config(
     page_title="Andamios ERP",
-    page_icon="🏗️",
+    page_icon=":material/foundation:",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -53,21 +53,21 @@ def show_dashboard():
     /* Alerta urgente */
     .alerta-roja {
         background: #FEF2F2;
-        border-left: 4px solid #EF4444;
+        border-left: 4px solid #64748B;
         border-radius: 8px;
         padding: 10px 16px;
         margin-bottom: 8px;
     }
     .alerta-naranja {
-        background: #FFF7ED;
-        border-left: 4px solid #F97316;
+        background: #F1F5F9;
+        border-left: 4px solid #94A3B8;
         border-radius: 8px;
         padding: 10px 16px;
         margin-bottom: 8px;
     }
     .alerta-amarilla {
-        background: #FEFCE8;
-        border-left: 4px solid #EAB308;
+        background: #F8FAFC;
+        border-left: 4px solid #CBD5E1;
         border-radius: 8px;
         padding: 10px 16px;
         margin-bottom: 8px;
@@ -88,7 +88,7 @@ def show_dashboard():
     # ─── Encabezado ─────────────────────────────────────────────────────────────
     col_titulo, col_periodo = st.columns([3, 2])
     with col_titulo:
-        st.markdown("## 🏗️ Andamios ERP — Dashboard")
+        st.markdown("## :material/foundation: Andamios ERP — Dashboard")
         st.caption(f"Actualizado: {date.today().strftime('%d de %B de %Y')}")
 
     with col_periodo:
@@ -109,7 +109,7 @@ def show_dashboard():
         # Botón de Corte Mensual
         report_data = generate_monthly_report(metricas if 'metricas' in locals() else get_dashboard_metricas(), top_prod if 'top_prod' in locals() else [], stock_crit if 'stock_crit' in locals() else [])
         st.download_button(
-            label="📄 Descargar Corte Mensual (PDF)",
+            label=":material/description: Descargar Corte Mensual (PDF)",
             data=report_data,
             file_name=f"corte_mensual_{datetime.now().strftime('%Y%m')}.pdf",
             mime="application/pdf",
@@ -144,7 +144,7 @@ def show_dashboard():
     with col2:
         vencen = int(metricas['contratos_por_vencer'] or 0)
         st.metric(
-            "⚠️ Vencen en 7 días",
+            "Vencen en 7 días",
             vencen,
             delta=f"-{vencen} urgentes" if vencen > 0 else None,
             delta_color="inverse"
@@ -161,7 +161,7 @@ def show_dashboard():
     with col4:
         ant_pend = float(metricas['anticipos_pendientes'] or 0)
         st.metric(
-            "💰 Anticipos por cobrar",
+            "Anticipos por cobrar",
             f"${ant_pend:,.0f}",
             delta=f"{int(metricas['contratos_anticipo_pendiente'] or 0)} contratos",
             delta_color="off"
@@ -173,7 +173,7 @@ def show_dashboard():
             if total_inv > 0 else 0
         )
         st.metric(
-            "📦 Utilización inventario",
+            "Utilización inventario",
             f"{utilizacion:.1f}%",
             delta=f"{int(metricas['total_rentado'] or 0)} pzas rentadas",
             delta_color="off"
@@ -197,14 +197,14 @@ def show_dashboard():
                 x=df_fac['mes_label'],
                 y=df_fac['facturacion'],
                 name='Facturado',
-                marker_color='#3B82F6',
+                marker_color='#64748B',
                 opacity=0.85
             ))
             fig.add_trace(go.Bar(
                 x=df_fac['mes_label'],
                 y=df_fac['cobrado'],
                 name='Cobrado',
-                marker_color='#10B981',
+                marker_color='#94A3B8',
                 opacity=0.85
             ))
             fig.update_layout(
@@ -222,7 +222,7 @@ def show_dashboard():
             # Exportar datos de facturación
             csv_fac = export_to_csv(df_fac)
             st.download_button(
-                label="📊 Descargar Datos de Facturación",
+                label=":material/bar_chart: Descargar Datos de Facturación",
                 data=csv_fac,
                 file_name=f"facturacion_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -250,25 +250,25 @@ def show_dashboard():
         st.markdown('<p class="seccion-titulo">Contratos próximos a vencer (30 días)</p>', unsafe_allow_html=True)
 
         if not proximos:
-            st.success("✅ Sin contratos por vencer en 30 días.")
+            st.success(":material/check_circle: Sin contratos por vencer en 30 días.")
         else:
             for ctr in proximos[:8]:
                 dias = int(ctr['dias_restantes'])
                 if dias <= 0:
                     css = "alerta-roja"
-                    icono = "🔴"
+                    icono = ":material/error:"
                     txt_dias = "VENCE HOY"
                 elif dias <= 3:
                     css = "alerta-roja"
-                    icono = "🔴"
+                    icono = ":material/error:"
                     txt_dias = f"{dias}d"
                 elif dias <= 7:
                     css = "alerta-naranja"
-                    icono = "🟠"
+                    icono = ":material/warning:"
                     txt_dias = f"{dias}d"
                 else:
                     css = "alerta-amarilla"
-                    icono = "🟡"
+                    icono = ":material/info:"
                     txt_dias = f"{dias}d"
 
                 ff = ctr['fecha_fin']
@@ -317,7 +317,7 @@ def show_dashboard():
                 labels=['Disponible', 'Rentado', 'Mantenimiento', 'Chatarra'],
                 values=[disponible, rentado, mantenimiento, chatarra],
                 hole=0.55,
-                marker_colors=['#10B981', '#3B82F6', '#F59E0B', '#EF4444'],
+                marker_colors=['#64748B', '#94A3B8', '#CBD5E1', '#E2E8F0'],
                 textinfo='label+percent',
                 textfont_size=11
             ))
@@ -332,7 +332,7 @@ def show_dashboard():
             # Eficiencia de Cobro
             if float(metricas['facturacion_mes'] or 0) > 0:
                 eficiencia = (float(metricas['facturacion_mes'] or 0) - float(metricas['anticipos_pendientes'] or 0)) / float(metricas['facturacion_mes'] or 0) * 100
-                st.markdown(f"**🎯 Eficiencia de Cobro (Mes): {eficiencia:.1f}%**")
+                st.markdown(f"**:material/target: Eficiencia de Cobro (Mes): {eficiencia:.1f}%**")
                 st.progress(eficiencia / 100)
 
     with col_stock:
@@ -343,7 +343,7 @@ def show_dashboard():
                 x=df_top['cantidad_rentada'],
                 y=df_top['codigo'],
                 orientation='h',
-                marker_color='#3B82F6'
+                marker_color='#64748B'
             ))
             fig_top.update_layout(
                 height=220,
@@ -359,46 +359,46 @@ def show_dashboard():
         st.markdown('<p class="seccion-titulo">Stock Crítico</p>', unsafe_allow_html=True)
         criticos = int(metricas['productos_stock_critico'] or 0)
         if criticos == 0:
-            st.success("✅ Todo OK")
+            st.success(":material/check_circle: Todo OK")
         else:
-            st.warning(f"⚠️ {criticos} bajo mínimo")
+            st.warning(f":material/warning: {criticos} bajo mínimo")
             if stock_crit:
                 for s in stock_crit[:3]:
                     st.caption(f"**{s['codigo']}**: {int(s['cantidad_disponible'])}/{int(s['stock_minimo'])}")
         st.markdown('<p class="seccion-titulo">Accesos rápidos</p>', unsafe_allow_html=True)
-        st.page_link("pages/03_cotizaciones.py",    label="➕ Nueva cotización")
-        st.page_link("pages/05_contratos.py",       label="📄 Nuevo contrato")
-        st.page_link("pages/06_hojas_salida.py",    label="🚚 Hoja de salida")
-        st.page_link("pages/07_hojas_entrada.py",   label="📥 Hoja de entrada")
-        st.page_link("pages/09_renovaciones.py",    label="🔄 Renovaciones")
-        st.page_link("pages/08_fabricacion.py",     label="🔧 Fabricación")
+        st.page_link("pages/03_cotizaciones.py",    label=":material/add_circle: Nueva cotización")
+        st.page_link("pages/05_contratos.py",       label=":material/description: Nuevo contrato")
+        st.page_link("pages/06_hojas_salida.py",    label=":material/local_shipping: Hoja de salida")
+        st.page_link("pages/07_hojas_entrada.py",   label=":material/move_to_inbox: Hoja de entrada")
+        st.page_link("pages/09_renovaciones.py",    label=":material/refresh: Renovaciones")
+        st.page_link("pages/08_fabricacion.py",     label=":material/build: Fabricación")
 
 # Inicializar Auth
 init_auth()
 
 # 3. Preparar páginas
-pg_dashboard = st.Page(show_dashboard, title="Dashboard", icon="📊", default=True)
-pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon="👥")
-pg_productos = st.Page("pages/02_productos.py", title="Productos", icon="📦")
-pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon="📋")
-pg_obras = st.Page("pages/04_obras.py", title="Obras", icon="🏗️")
-pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon="📄")
-pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas De Salida", icon="🚚")
-pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon="📥")
-pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon="🔧")
-pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon="🔄")
-pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon="💰")
-pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon="📊")
-pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon="🔁")
+pg_dashboard = st.Page(show_dashboard, title="Dashboard", icon=":material/dashboard:", default=True)
+pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon=":material/groups:")
+pg_productos = st.Page("pages/02_productos.py", title="Productos", icon=":material/inventory_2:")
+pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon=":material/assignment:")
+pg_obras = st.Page("pages/04_obras.py", title="Obras", icon=":material/foundation:")
+pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon=":material/description:")
+pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas De Salida", icon=":material/local_shipping:")
+pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon=":material/move_to_inbox:")
+pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon=":material/build:")
+pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon=":material/refresh:")
+pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon=":material/payments:")
+pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon=":material/bar_chart:")
+pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon=":material/sync_alt:")
 
 if not st.session_state.authenticated:
-    pg = st.navigation([st.Page(login_screen, title="Iniciar Sesión", icon="🔒")])
+    pg = st.navigation([st.Page(login_screen, title="Iniciar Sesión", icon=":material/lock:")])
 else:
     with st.sidebar:
-        st.markdown(f"### 🏗️ ERP ICAM")
-        st.markdown(f"👤 **{st.session_state.user_info['nombre']}**")
+        st.markdown(f"### :material/foundation: ERP ICAM")
+        st.markdown(f":material/person: **{st.session_state.user_info['nombre']}**")
         st.caption(f"Rol: {st.session_state.user_info['rol'].capitalize()}")
-        if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True):
+        if st.button(":material/logout: Cerrar Sesión", type="secondary", use_container_width=True):
             logout()
         st.divider()
 
@@ -409,29 +409,5 @@ else:
         "Operaciones": [pg_fabricacion, pg_cambios_of],
         "Finanzas": [pg_renovaciones, pg_anticipos]
     })
-
-pg.run()
-trada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon="📥")
-pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon="🔧")
-pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon="🔄")
-pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon="💰")
-pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon="📊")
-pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon="🔁")
-
-pg = st.navigation([
-    pg_dashboard,
-    pg_clientes,
-    pg_productos,
-    pg_cotizaciones,
-    pg_obras,
-    pg_contratos,
-    pg_hojas_salida,
-    pg_hojas_entrada,
-    pg_fabricacion,
-    pg_renovaciones,
-    pg_anticipos,
-    pg_inventario,
-    pg_cambios_of
-])
 
 pg.run()

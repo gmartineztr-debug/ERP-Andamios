@@ -16,20 +16,20 @@ from utils.database import (
 
 
 
-st.title("🏗️ Obras")
+st.title(":material/foundation: Obras")
 st.divider()
 
 ESTATUS_LABEL = {
-    'activa'    : '🟢 Activa',
-    'suspendida': '🟡 Suspendida',
-    'terminada' : '✅ Terminada',
-    'cancelada' : '❌ Cancelada'
+    'activa'    : 'Activa',
+    'suspendida': 'Suspendida',
+    'terminada' : 'Terminada',
+    'cancelada' : 'Cancelada'
 }
 
 tab_lista, tab_nueva, tab_detalle = st.tabs([
-    "📋 Lista De Obras",
-    "➕ Nueva Obra",
-    "🔍 Ver Detalle"
+    ":material/list_alt: Lista De Obras",
+    ":material/add_box: Nueva Obra",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -136,7 +136,7 @@ with tab_nueva:
             )
 
         st.divider()
-        submitted = st.form_submit_button("💾 Guardar obra", type="primary")
+        submitted = st.form_submit_button(":material/save: Guardar obra", type="primary")
 
         if submitted:
             if not nombre_proyecto:
@@ -156,9 +156,9 @@ with tab_nueva:
                         'responsable'       : responsable,
                         'notas'             : notas
                     })
-                    st.success(f"✅ Obra {folio} registrada correctamente.")
+                    st.success(f":material/check_circle: Obra {folio} registrada correctamente.")
                 except Exception as e:
-                    st.error(f"❌ Error: {e}")
+                    st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — DETALLE
@@ -207,11 +207,11 @@ with tab_detalle:
                 )
                 if st.button("Actualizar estatus"):
                     actualizar_estatus_obra(obra_id, nuevo_estatus)
-                    st.success("✅ Estatus actualizado.")
+                    st.success(":material/check_circle: Estatus actualizado.")
                     st.rerun()
 
             if obra['notas']:
-                st.info(f"📝 {obra['notas']}")
+                st.info(f":material/description: {obra['notas']}")
 
             st.divider()
 

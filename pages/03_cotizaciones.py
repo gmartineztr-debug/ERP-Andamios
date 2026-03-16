@@ -16,29 +16,29 @@ from utils.database import (
 
 
 
-st.title("📋 Cotizaciones")
+st.title(":material/assignment: Cotizaciones")
 st.divider()
 
 ESTATUS_LABEL = {
-    'borrador'    : '📝 Borrador',
-    'enviada'     : '📤 Enviada',
-    'en_revision' : '🔍 En revisión',
-    'aprobada'    : '✅ Aprobada',
-    'cancelada'   : '❌ Cancelada'
+    'borrador'    : 'Borrador',
+    'enviada'     : 'Enviada',
+    'en_revision' : 'En revisión',
+    'aprobada'    : 'Aprobada',
+    'cancelada'   : 'Cancelada'
 }
 
 ESTATUS_COLOR = {
-    'borrador'    : 'gray',
-    'enviada'     : 'blue',
-    'en_revision' : 'orange',
-    'aprobada'    : 'green',
-    'cancelada'   : 'red'
+    'borrador'    : '#94A3B8',
+    'enviada'     : '#64748B',
+    'en_revision' : '#475569',
+    'aprobada'    : '#334155',
+    'cancelada'   : '#1E293B'
 }
 
 tab_lista, tab_nueva, tab_detalle = st.tabs([
-    "📋 Lista De Cotizaciones",
-    "➕ Nueva Cotización",
-    "🔍 Ver Detalle"
+    ":material/list_alt: Lista De Cotizaciones",
+    ":material/add_box: Nueva Cotización",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -153,7 +153,7 @@ with tab_nueva:
                                   value=precio_default, step=0.50, format="%.2f")
     with col4:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("➕ Agregar"):
+        if st.button(":material/add: Agregar"):
             st.session_state.cot_items.append({
                 'producto_id'   : producto_data['id'],
                 'codigo'        : producto_data['codigo'],
@@ -182,7 +182,7 @@ with tab_nueva:
         with col_eliminar:
             idx_eliminar = st.number_input("Eliminar fila #", min_value=1,
                                             max_value=len(st.session_state.cot_items), step=1)
-            if st.button("🗑️ Eliminar"):
+            if st.button(":material/delete: Eliminar"):
                 st.session_state.cot_items.pop(idx_eliminar - 1)
                 st.rerun()
 
@@ -197,9 +197,9 @@ with tab_nueva:
             "Tipo de flete",
             ["cotizado", "sin_costo", "cliente"],
             format_func=lambda x: {
-                'cotizado' : '💰 Se cotiza (cobrado)',
-                'sin_costo': '🎁 Sin costo',
-                'cliente'  : '🚛 Por cuenta del cliente'
+                'cotizado' : 'Se cotiza (cobrado)',
+                'sin_costo': 'Sin costo',
+                'cliente'  : 'Por cuenta del cliente'
             }[x]
         )
 
@@ -254,7 +254,7 @@ with tab_nueva:
         )
     with col2:
         st.markdown("<br>", unsafe_allow_html=True)
-        if st.button("💾 Guardar cotización", type="primary", use_container_width=True):
+        if st.button(":material/save: Guardar cotización", type="primary", use_container_width=True):
             if not st.session_state.cot_items:
                 st.error("Agrega al menos un producto.")
             else:
@@ -277,11 +277,11 @@ with tab_nueva:
                         'dias_renta'     : dias_renta,
                         'notas'          : notas
                     }, st.session_state.cot_items)
-                    st.success(f"✅ Cotización {folio} guardada correctamente.")
+                    st.success(f":material/check_circle: Cotización {folio} guardada correctamente.")
                     st.session_state.cot_items = []
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Error: {e}")
+                    st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — DETALLE
@@ -325,7 +325,7 @@ with tab_detalle:
                 )
                 if st.button("Actualizar estatus"):
                     actualizar_estatus_cotizacion(cot_id, nuevo_estatus)
-                    st.success("✅ Estatus actualizado.")
+                    st.success(":material/check_circle: Estatus actualizado.")
                     st.rerun()
 
             st.divider()

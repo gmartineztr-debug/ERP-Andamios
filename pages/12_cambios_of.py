@@ -20,14 +20,14 @@ from utils.database import (
 
 
 
-st.title("🔄 Solicitudes de Cambio de OF")
+st.title(":material/history: Solicitudes de Cambio de OF")
 st.caption("Registra interrupciones, cambios de plan o cierres parciales de Órdenes de Fabricación.")
 st.divider()
 
 tab_nueva, tab_lista, tab_detalle = st.tabs([
-    "➕ Nueva Solicitud De Cambio",
-    "📋 Lista De Solicitudes De Cambio",
-    "🔍 Ver Detalle"
+    ":material/add_box: Nueva Solicitud De Cambio",
+    ":material/list_alt: Lista De Solicitudes De Cambio",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -206,7 +206,7 @@ with tab_nueva:
 
         # Botón crear SC
         if st.button(
-            "💾 Registrar Solicitud de Cambio",
+            ":material/save: Registrar Solicitud de Cambio",
             type="primary",
             use_container_width=True,
             key="btn_crear_sc"
@@ -252,7 +252,7 @@ with tab_nueva:
                         materiales=sc_materiales
                     )
 
-                    msg = f"✅ SC {folio_sc} registrada."
+                    msg = f":material/check_circle: SC {folio_sc} registrada."
                     if nueva_of_id:
                         msg += f" Nueva OF {folio_nueva} creada para los pendientes."
                     st.success(msg)
@@ -286,9 +286,9 @@ with tab_lista:
         col1, col2, col3 = st.columns(3)
         col1.metric("Total SC", len(df))
         col2.metric("Aprobadas",
-            len(df[df['estatus'] == '✅ Aprobada']))
+            len(df[df['estatus'] == 'Aprobada']))
         col3.metric("Canceladas",
-            len(df[df['estatus'] == '❌ Cancelada']))
+            len(df[df['estatus'] == 'Cancelada']))
 
         st.divider()
 
@@ -401,13 +401,13 @@ with tab_detalle:
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button(
-                        "⚡ Marcar como Aplicada",
+                        ":material/bolt: Marcar como Aplicada",
                         type="primary",
                         use_container_width=True,
                         key="btn_sc_aplicada"
                     ):
                         actualizar_estatus_sc(sc_id, 'aplicada')
-                        st.success("✅ SC marcada como aplicada.")
+                        st.success(":material/check_circle: SC marcada como aplicada.")
                         st.rerun()
                 with col2:
                     if st.button(

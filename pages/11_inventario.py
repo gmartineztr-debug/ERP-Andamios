@@ -23,14 +23,14 @@ from utils.auth_manager import check_permission
 
 
 
-st.title("📦 Control de Inventario")
+st.title(":material/inventory: Control de Inventario")
 st.divider()
 
 tab_bitacora, tab_saldo_obra, tab_nuevo_conteo, tab_conteos = st.tabs([
-    "📋 Bitácora De Movimientos",
-    "🏗️ Saldo En Obra",
-    "➕ Nuevo Conteo Físico",
-    "🔍 Conteos Realizados"
+    ":material/list_alt: Bitácora De Movimientos",
+    ":material/foundation: Saldo En Obra",
+    ":material/add_box: Nuevo Conteo Físico",
+    ":material/inventory_2: Conteos Realizados"
 ])
 
 # ================================================
@@ -58,12 +58,12 @@ with tab_bitacora:
     with col2:
         TIPOS_MOV = {
             "Todos"               : None,
-            "🚚 Salida entrega"   : "salida_entrega",
-            "📥 Entrada devolución": "entrada_devolucion",
-            "🛒 Entrada compra"   : "entrada_compra",
-            "🔧 Entrada fabricación": "entrada_fabricacion",
-            "✏️ Ajuste manual"    : "ajuste_manual",
-            "📊 Ajuste conteo"    : "ajuste_conteo"
+            "Salida entrega"   : "salida_entrega",
+            "Entrada devolución": "entrada_devolucion",
+            "Entrada compra"   : "entrada_compra",
+            "Entrada fabricación": "entrada_fabricacion",
+            "Ajuste manual"    : "ajuste_manual",
+            "Ajuste conteo"    : "ajuste_conteo"
         }
         tipo_sel = st.selectbox(
             "Filtrar por tipo",
@@ -94,12 +94,12 @@ with tab_bitacora:
         # Formatear
         df['fecha'] = pd.to_datetime(df['fecha']).dt.strftime('%d/%m/%Y %H:%M')
         df['tipo_movimiento'] = df['tipo_movimiento'].map({
-            'salida_entrega'     : '🚚 Salida entrega',
-            'entrada_devolucion' : '📥 Devolución',
-            'entrada_compra'     : '🛒 Compra',
-            'entrada_fabricacion': '🔧 Fabricación',
-            'ajuste_manual'      : '✏️ Ajuste manual',
-            'ajuste_conteo'      : '📊 Ajuste conteo'
+            'salida_entrega'     : 'Salida entrega',
+            'entrada_devolucion' : 'Devolución',
+            'entrada_compra'     : 'Compra',
+            'entrada_fabricacion': 'Fabricación',
+            'ajuste_manual'      : 'Ajuste manual',
+            'ajuste_conteo'      : 'Ajuste conteo'
         })
 
         # Métricas rápidas
@@ -129,7 +129,7 @@ with tab_bitacora:
         with col_ex_a:
             csv_data = export_to_csv(df_show)
             st.download_button(
-                label="📥 Exportar Bitácora",
+                label=":material/file_download: Exportar Bitácora",
                 data=csv_data,
                 file_name=f"bitacora_inv_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
                 mime="text/csv",
@@ -138,7 +138,7 @@ with tab_bitacora:
         with col_ex_b:
             pdf_data = export_to_pdf(df_show, title="Bitácora de Movimientos de Inventario")
             st.download_button(
-                label="📄 PDF Bitácora",
+                label=":material/picture_as_pdf: PDF Bitácora",
                 data=pdf_data,
                 file_name=f"bitacora_inv_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
                 mime="application/pdf",
@@ -235,7 +235,7 @@ with tab_saldo_obra:
             # Exportar saldo
             csv_so = export_to_csv(df_so_show)
             st.download_button(
-                label=f"📥 Exportar Saldo {data_c['folio']}",
+                label=f":material/file_download: Exportar Saldo {data_c['folio']}",
                 data=csv_so,
                 file_name=f"saldo_campo_{data_c['folio']}_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv"
@@ -279,7 +279,7 @@ with tab_nuevo_conteo:
     )
 
     if st.button(
-        "➕ Iniciar conteo físico",
+        ":material/add_box: Iniciar conteo físico",
         type="primary",
         use_container_width=True,
         key="btn_crear_conteo"
@@ -298,7 +298,7 @@ with tab_nuevo_conteo:
                     'responsable': responsable,
                     'notas'      : notas_cnt
                 })
-                st.success(f"✅ Conteo {folio} iniciado. Ve al tab 'Conteos realizados' para capturar los valores físicos.")
+                st.success(f":material/check_circle: Conteo {folio} iniciado. Ve al tab 'Conteos realizados' para capturar los valores físicos.")
                 st.session_state.conteo_activo = conteo_id
                 st.rerun()
             except Exception as e:
@@ -316,9 +316,9 @@ with tab_conteos:
         st.info("No hay conteos registrados. Inicia uno en el tab anterior.")
     else:
         ESTATUS_CNT = {
-            'en_proceso': '🟡 En proceso',
-            'cerrado'   : '✅ Cerrado',
-            'cancelado' : '❌ Cancelado'
+            'en_proceso': 'En proceso',
+            'cerrado'   : 'Cerrado',
+            'cancelado' : 'Cancelado'
         }
 
         # Lista de conteos
@@ -373,9 +373,9 @@ with tab_conteos:
             col4.metric("Ajustes aplicados",  int(df_items['ajuste_aplicado'].sum()))
 
             if con_diff > 0:
-                st.warning(f"⚠️ {con_diff} producto(s) tienen diferencia entre el sistema y el conteo físico.")
+                st.warning(f":material/warning: {con_diff} producto(s) tienen diferencia entre el sistema y el conteo físico.")
             else:
-                st.success("✅ Todos los productos coinciden con el sistema.")
+                st.success(":material/check_circle: Todos los productos coinciden con el sistema.")
 
             st.divider()
 
@@ -483,7 +483,7 @@ with tab_conteos:
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button(
-                        "🔄 Actualizar vista",
+                        ":material/refresh: Actualizar vista",
                         key="btn_refresh_cnt"
                     ):
                         st.rerun()
@@ -494,7 +494,7 @@ with tab_conteos:
                             f"en {con_diff} producto(s)."
                         )
                         if st.button(
-                            "⚡ Aplicar ajustes al inventario",
+                            ":material/bolt: Aplicar ajustes al inventario",
                             type="primary",
                             use_container_width=True,
                             key="btn_aplicar_cnt"
@@ -514,7 +514,7 @@ with tab_conteos:
                                     if check_permission('admin'):
                                         aplicar_ajuste_conteo(cnt_id)
                                         st.success(
-                                            "✅ Ajustes aplicados. Inventario actualizado. "
+                                            ":material/check_circle: Ajustes aplicados. Inventario actualizado. "
                                             "Conteo cerrado."
                                         )
                                         st.rerun()
@@ -524,14 +524,14 @@ with tab_conteos:
                                     st.error(f"❌ Error: {e}")
                     else:
                         if st.button(
-                            "✅ Cerrar conteo sin ajustes",
+                            ":material/check_circle: Cerrar conteo sin ajustes",
                             type="primary",
                             use_container_width=True,
                             key="btn_cerrar_cnt"
                         ):
                             try:
                                 aplicar_ajuste_conteo(cnt_id)
-                                st.success("✅ Conteo cerrado. Todo cuadró.")
+                                st.success(":material/check_circle: Conteo cerrado. Todo cuadró.")
                                 st.rerun()
                             except Exception as e:
                                 st.error(f"❌ Error: {e}")

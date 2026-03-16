@@ -17,21 +17,21 @@ from utils.database import (
 
 
 
-st.title("🚚 Hojas de Salida")
+st.title(":material/local_shipping: Hojas de Salida")
 st.divider()
 
 ESTATUS_LABEL = {
-    'pendiente'   : '⏳ Pendiente',
-    'en_transito' : '🚚 En tránsito',
-    'entregada'   : '✅ Entregada',
-    'cancelada'   : '❌ Cancelada'
+    'pendiente'   : 'Pendiente',
+    'en_transito' : 'En tránsito',
+    'entregada'   : 'Entregada',
+    'cancelada'   : 'Cancelada'
 }
 
 tab_contratos, tab_nueva, tab_lista, tab_detalle = st.tabs([
-    "📋 Contratos Pendientes",
-    "➕ Nueva Hoja De Salida",
-    "📄 Lista De Hojas",
-    "🔍 Ver Detalle"
+    ":material/assignment_late: Contratos Pendientes",
+    ":material/add_box: Nueva Hoja De Salida",
+    ":material/list_alt: Lista De Hojas",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -63,7 +63,7 @@ with tab_contratos:
         ]
         st.dataframe(df_show, use_container_width=True, hide_index=True)
         st.caption(f"{len(contratos)} contratos activos")
-        st.info("👆 Ve al tab **➕ Nueva hoja de salida** para crear una entrega.")
+        st.info(":material/info: Ve al tab **:material/add_box: Nueva hoja de salida** para crear una entrega.")
 
 # ================================================
 # TAB 2 — NUEVA HOJA DE SALIDA
@@ -89,7 +89,7 @@ with tab_nueva:
 
         if ctr:
             # Info del contrato
-            with st.expander("📋 Datos del contrato", expanded=True):
+            with st.expander(":material/description: Datos del contrato", expanded=True):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.markdown(f"**Cliente:** {ctr['cliente_nombre']}")
@@ -218,10 +218,10 @@ with tab_nueva:
 
                 peso_grand_total = sum(i['peso_total'] for i in items_a_enviar)
                 st.divider()
-                st.metric("⚖️ Peso total de la salida", f"{peso_grand_total:.1f} kg")
+                st.metric("Peso total de la salida", f"{peso_grand_total:.1f} kg")
 
                 st.divider()
-                if st.button("💾 Crear hoja de salida", type="primary", use_container_width=True):
+                if st.button(":material/save: Crear hoja de salida", type="primary", use_container_width=True):
                     if not items_a_enviar:
                         st.error("❌ Debes incluir al menos un producto.")
                     else:
@@ -239,10 +239,10 @@ with tab_nueva:
                                 'contacto_entrega': contacto_entrega,
                                 'telefono_entrega': telefono_entrega
                             }, items_a_enviar)
-                            st.success(f"✅ Hoja de salida {folio} creada correctamente.")
+                            st.success(f":material/check_circle: Hoja de salida {folio} creada correctamente.")
                             st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Error: {e}")
+                            st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — LISTA
@@ -349,9 +349,9 @@ with tab_detalle:
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.metric("📦 Total piezas", int(total_piezas))
+                    st.metric("Total piezas", int(total_piezas))
                 with col2:
-                    st.metric("⚖️ Peso total", f"{float(total_peso):.1f} kg")
+                    st.metric("Peso total", f"{float(total_peso):.1f} kg")
 
             st.divider()
 
@@ -376,9 +376,9 @@ with tab_detalle:
 
                 if st.button("Actualizar estatus", type="primary"):
                     actualizar_estatus_salida(salida_id, nuevo_estatus, fecha_entrega)
-                    st.success("✅ Estatus actualizado.")
+                    st.success(":material/check_circle: Estatus actualizado.")
                     if nuevo_estatus == 'entregada':
-                        st.info("📦 Inventario actualizado: disponible ↓ | rentado ↑")
+                        st.info(":material/inventory_2: Inventario actualizado: disponible ↓ | rentado ↑")
                     st.rerun()
 
             # PDF

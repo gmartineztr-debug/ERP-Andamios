@@ -24,28 +24,28 @@ from utils.database import (
 
 
 
-st.title("📦 Hojas de Entrada")
+st.title(":material/move_to_inbox: Hojas de Entrada")
 st.divider()
 
 ESTATUS_LABEL = {
-    'pendiente' : '⏳ Pendiente',
-    'recibida'  : '📬 Recibida',
-    'cerrada'   : '✅ Cerrada',
-    'cancelada' : '❌ Cancelada'
+    'pendiente' : 'Pendiente',
+    'recibida'  : 'Recibida',
+    'cerrada'   : 'Cerrada',
+    'cancelada' : 'Cancelada'
 }
 
 TIPO_LABEL = {
-    'devolucion'  : '🔄 Devolución',
-    'compra'      : '🛒 Compra',
-    'fabricacion' : '🔧 Fabricación'
+    'devolucion'  : 'Devolución',
+    'compra'      : 'Compra',
+    'fabricacion' : 'Fabricación'
 }
 
 tab_devolucion, tab_compra, tab_fabricacion, tab_lista, tab_detalle = st.tabs([
-    "🔄 Devolución",
-    "🛒 Compra",
-    "🔧 Fabricación",
-    "📄 Lista De Entradas",
-    "🔍 Ver Detalle"
+    ":material/settings_backup_restore: Devolución",
+    ":material/shopping_cart: Compra",
+    ":material/construction: Fabricación",
+    ":material/list_alt: Lista De Entradas",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -72,7 +72,7 @@ with tab_devolucion:
         ctr    = next(c for c in contratos if c['id'] == ctr_id)
 
         # Info contrato
-        with st.expander("📋 Datos del contrato", expanded=True):
+        with st.expander(":material/description: Datos del contrato", expanded=True):
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown(f"**Cliente:** {ctr['cliente_nombre']}")
@@ -109,10 +109,10 @@ with tab_devolucion:
             cols = st.columns([3, 1, 1, 1, 1, 1])
             cols[0].markdown("**Producto**")
             cols[1].markdown("**En campo**")
-            cols[2].markdown("**✅ Bueno**")
-            cols[3].markdown("**🔧 Dañado**")
-            cols[4].markdown("**❌ Pérdida**")
-            cols[5].markdown("**💀 Chatarra**")
+            cols[2].markdown("**Bueno**")
+            cols[3].markdown("**Dañado**")
+            cols[4].markdown("**Pérdida**")
+            cols[5].markdown("**Chatarra**")
 
             items_devolucion = []
             hay_cobro = False
@@ -190,11 +190,11 @@ with tab_devolucion:
                     for i in items_cobro
                 )
                 st.warning(
-                    f"⚠️ Se detectaron piezas con cobro. "
+                    f":material/warning: Se detectaron piezas con cobro. "
                     f"Se generará un contrato de venta por **${total_cobro:,.2f}** (90% valor comercial)."
                 )
 
-            if st.button("💾 Crear hoja de entrada", type="primary",
+            if st.button(":material/save: Crear hoja de entrada", type="primary",
                          use_container_width=True, key="btn_crear_dev"):
                 errores = []
                 for item in items_devolucion:
@@ -276,11 +276,11 @@ with tab_devolucion:
                             vincular_contrato_venta_entrada(entrada_id, contrato_venta_id)
 
                             st.success(
-                                f"✅ HE {folio} creada. "
+                                f":material/check_circle: HE {folio} creada. "
                                 f"Contrato de venta {folio_venta} generado automáticamente."
                             )
                         else:
-                            st.success(f"✅ Hoja de entrada {folio} creada correctamente.")
+                            st.success(f":material/check_circle: Hoja de entrada {folio} creada correctamente.")
 
                         st.rerun()
                     except Exception as e:
@@ -296,7 +296,7 @@ with tab_compra:
 
     col1, col2 = st.columns([3, 1])
     with col2:
-        if st.button("➕ Nuevo proveedor", key="btn_nuevo_prov"):
+        if st.button(":material/add: Nuevo proveedor", key="btn_nuevo_prov"):
             st.session_state.show_nuevo_prov = True
 
     # Formulario nuevo proveedor
@@ -311,7 +311,7 @@ with tab_compra:
             with col2:
                 np_email = st.text_input("Email", key="np_email")
                 np_dir   = st.text_input("Dirección", key="np_dir")
-            if st.button("💾 Guardar proveedor", key="btn_save_prov"):
+            if st.button(":material/save: Guardar proveedor", key="btn_save_prov"):
                 if not np_nombre:
                     st.error("El nombre es obligatorio.")
                 else:
@@ -366,7 +366,7 @@ with tab_compra:
                                        format="%.2f", key="cmp_costo")
         with col4:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("➕ Agregar", key="btn_add_cmp"):
+            if st.button(":material/add: Agregar", key="btn_add_cmp"):
                 prod = opciones_prod[prod_sel]
                 st.session_state.cmp_items.append({
                     'producto_id'  : prod['id'],
@@ -393,11 +393,11 @@ with tab_compra:
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🗑️ Limpiar lista", key="btn_clear_cmp"):
+                if st.button(":material/delete_sweep: Limpiar lista", key="btn_clear_cmp"):
                     st.session_state.cmp_items = []
                     st.rerun()
             with col2:
-                if st.button("💾 Crear hoja de entrada", type="primary",
+                if st.button(":material/save: Crear hoja de entrada", type="primary",
                              use_container_width=True, key="btn_crear_cmp"):
                     if not num_factura:
                         st.error("❌ El número de factura es obligatorio.")
@@ -414,11 +414,11 @@ with tab_compra:
                                 'fecha_entrada': fecha_cmp,
                                 'notas'        : notas_cmp
                             }, st.session_state.cmp_items)
-                            st.success(f"✅ Hoja de entrada {folio} creada.")
+                            st.success(f":material/check_circle: Hoja de entrada {folio} creada.")
                             st.session_state.cmp_items = []
                             st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Error: {e}")
+                            st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — FABRICACIÓN
@@ -464,7 +464,7 @@ with tab_fabricacion:
             )
         with col3:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("➕ Agregar", key="btn_add_fab"):
+            if st.button(":material/add: Agregar", key="btn_add_fab"):
                 prod = opciones_fab[fab_prod_sel]
                 st.session_state.fab_items.append({
                     'producto_id'  : prod['id'],
@@ -484,11 +484,11 @@ with tab_fabricacion:
 
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🗑️ Limpiar lista", key="btn_clear_fab"):
+                if st.button(":material/delete_sweep: Limpiar lista", key="btn_clear_fab"):
                     st.session_state.fab_items = []
                     st.rerun()
             with col2:
-                if st.button("💾 Crear hoja de entrada", type="primary",
+                if st.button(":material/save: Crear hoja de entrada", type="primary",
                              use_container_width=True, key="btn_crear_fab"):
                     if not lote:
                         st.error("❌ El lote de fabricación es obligatorio.")
@@ -503,11 +503,11 @@ with tab_fabricacion:
                                 'fecha_entrada'    : fecha_fab,
                                 'notas'            : notas_fab
                             }, st.session_state.fab_items)
-                            st.success(f"✅ Hoja de entrada {folio} creada.")
+                            st.success(f":material/check_circle: Hoja de entrada {folio} creada.")
                             st.session_state.fab_items = []
                             st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Error: {e}")
+                            st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 4 — LISTA
@@ -624,10 +624,10 @@ with tab_detalle:
                 if he['tipo_entrada'] == 'devolucion':
                     total_piezas = df_items['cantidad_total'].sum()
                     col1, col2, col3, col4 = st.columns(4)
-                    col1.metric("✅ Buenas", int(df_items['cantidad_buena'].sum()))
-                    col2.metric("🔧 Dañadas", int(df_items['cantidad_danada'].sum()))
-                    col3.metric("❌ Pérdidas", int(df_items['cantidad_perdida'].sum()))
-                    col4.metric("💀 Chatarra", int(df_items['cantidad_chatarra'].sum()))
+                    col1.metric("Buenas", int(df_items['cantidad_buena'].sum()))
+                    col2.metric("Dañadas", int(df_items['cantidad_danada'].sum()))
+                    col3.metric("Pérdidas", int(df_items['cantidad_perdida'].sum()))
+                    col4.metric("Chatarra", int(df_items['cantidad_chatarra'].sum()))
 
                     df_show = df_items[[
                         'codigo', 'producto_nombre',
@@ -636,8 +636,8 @@ with tab_detalle:
                     ]]
                     df_show.columns = [
                         'Código', 'Producto',
-                        '✅ Bueno', '🔧 Dañado',
-                        '❌ Pérdida', '💀 Chatarra'
+                        'Bueno', 'Dañado',
+                        'Pérdida', 'Chatarra'
                     ]
                 else:
                     total_piezas = df_items['cantidad_total'].sum()
@@ -677,9 +677,9 @@ with tab_detalle:
 
                     if st.button("Actualizar estatus", type="primary", key="btn_upd_he"):
                         actualizar_estatus_entrada(entrada_id, nuevo_est, fecha_cierre)
-                        st.success("✅ Estatus actualizado.")
+                        st.success(":material/check_circle: Estatus actualizado.")
                         if nuevo_est == 'cerrada':
-                            st.info("📦 Inventario actualizado correctamente.")
+                            st.info(":material/inventory_2: Inventario actualizado correctamente.")
                         st.rerun()
             else:
                 st.info(f"Esta HE está **{ESTATUS_LABEL[he['estatus']]}** — no se puede modificar.")

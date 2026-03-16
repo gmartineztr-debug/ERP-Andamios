@@ -18,14 +18,14 @@ from utils.database import (
 
 
 
-st.title("🔄 Renovaciones de Contratos")
+st.title(":material/history: Renovaciones de Contratos")
 st.divider()
 
 tab_alertas, tab_renovar, tab_historial, tab_edocuenta = st.tabs([
-    "🚨 Alertas De Vencimiento",
-    "🔄 Renovar Contrato",
-    "📋 Historial De Renovaciones",
-    "📊 Estado De Cuenta"
+    ":material/notification_important: Alertas De Vencimiento",
+    ":material/history: Renovar Contrato",
+    ":material/list_alt: Historial De Renovaciones",
+    ":material/account_balance_wallet: Estado De Cuenta"
 ])
 
 # ================================================
@@ -37,7 +37,7 @@ with tab_alertas:
     por_vencer = get_contratos_por_vencer()
 
     if not por_vencer:
-        st.success("✅ No hay contratos por vencer en los próximos 7 días.")
+        st.success(":material/check_circle: No hay contratos por vencer en los próximos 7 días.")
     else:
         # Métricas rápidas
         vencen_hoy    = [c for c in por_vencer if c['dias_restantes'] == 0]
@@ -81,7 +81,7 @@ with tab_alertas:
                 col1, col2, col3, col4 = st.columns([3, 2, 2, 2])
                 with col1:
                     st.markdown(
-                        f"{color} **{ctr['folio']}** — {ctr['cliente_nombre']}"
+                        f"**{ctr['folio']}** — {ctr['cliente_nombre']}"
                     )
                     obra_txt = f"{ctr.get('folio_obra','—')} — {ctr.get('obra_nombre','')}" \
                                if ctr.get('obra_nombre') else "Sin obra"
@@ -95,7 +95,7 @@ with tab_alertas:
                     st.caption(f"Tel: {ctr.get('cliente_telefono') or '—'}")
                 with col4:
                     if st.button(
-                        "🔄 Renovar",
+                        ":material/history: Renovar",
                         key=f"btn_renovar_{ctr['id']}",
                         type="primary"
                     ):
@@ -103,7 +103,7 @@ with tab_alertas:
                         st.session_state.ir_a_renovar       = True
                         st.rerun()
                     if st.button(
-                        "📦 Recolectar",
+                        ":material/inventory_2: Recolectar",
                         key=f"btn_recolectar_{ctr['id']}"
                     ):
                         st.info(
@@ -159,7 +159,7 @@ with tab_renovar:
 
         if ctr:
             # Info contrato origen
-            with st.expander("📋 Contrato origen", expanded=True):
+            with st.expander(":material/description: Contrato origen", expanded=True):
                 col1, col2, col3 = st.columns(3)
                 with col1:
                     st.markdown(f"**Folio:** {ctr['folio']}")
@@ -177,11 +177,11 @@ with tab_renovar:
                     )
                     dias_rest = (ff - date.today()).days if ff else 0
                     if dias_rest <= 0:
-                        st.error(f"⚠️ Vencido hace {abs(dias_rest)} días")
+                        st.error(f":material/error: Vencido hace {abs(dias_rest)} días")
                     elif dias_rest <= 3:
-                        st.warning(f"⚠️ Vence en {dias_rest} días")
+                        st.warning(f":material/warning: Vence en {dias_rest} días")
                     else:
-                        st.info(f"Vence en {dias_rest} días")
+                        st.info(f":material/info: Vence en {dias_rest} días")
 
             st.divider()
 
@@ -431,7 +431,7 @@ with tab_historial:
                         'finalizado': '✅'
                     }
                     color = ESTATUS_COLOR.get(c['estatus'], '⚪')
-                    st.markdown(f"{color} {c['estatus'].capitalize()}")
+                    st.markdown(f"{c['estatus'].capitalize()}")
 
                 if idx < len(cadena) - 1:
                     st.markdown("---")

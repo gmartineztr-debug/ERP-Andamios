@@ -26,31 +26,31 @@ from utils.database import (
 
 
 
-st.title("🔧 Fabricación")
+st.title(":material/construction: Fabricación")
 st.divider()
 
 ESTATUS_OF_LABEL = {
-    'abierta'            : '📂 Abierta',
-    'espera_materiales'  : '⏳ En espera de materiales',
-    'en_fabricacion'     : '⚙️ En fabricación',
-    'terminada'          : '✅ Terminada',
-    'cancelada'          : '❌ Cancelada',
-    'modificada'         : '✏️ Modificada'
+    'abierta'            : 'Abierta',
+    'espera_materiales'  : 'En espera de materiales',
+    'en_fabricacion'     : 'En fabricación',
+    'terminada'          : 'Terminada',
+    'cancelada'          : 'Cancelada',
+    'modificada'         : 'Modificada'
 }
 
 ESTATUS_OC_LABEL = {
-    'borrador' : '📝 Borrador',
-    'enviada'  : '📤 Enviada',
-    'recibida' : '✅ Recibida',
-    'cancelada': '❌ Cancelada'
+    'borrador' : 'Borrador',
+    'enviada'  : 'Enviada',
+    'recibida' : 'Recibida',
+    'cancelada': 'Cancelada'
 }
 
 tab_nueva_of, tab_nueva_oc, tab_lista_of, tab_lista_oc, tab_detalle_of = st.tabs([
-    "➕ Nueva OF",
-    "🛒 Nueva OC",
-    "📋 Órdenes De Fabricación",
-    "📋 Órdenes De Compra",
-    "🔍 Ver Detalle OF"
+    ":material/add_box: Nueva OF",
+    ":material/shopping_cart: Nueva OC",
+    ":material/list_alt: Órdenes De Fabricación",
+    ":material/list_alt: Órdenes De Compra",
+    ":material/search: Ver Detalle OF"
 ])
 
 # ================================================
@@ -95,7 +95,7 @@ with tab_nueva_of:
             )
         with col3:
             st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("➕ Agregar", key="btn_add_of"):
+            if st.button(":material/add: Agregar", key="btn_add_of"):
                 prod = opciones_fab[of_prod_sel]
                 existe = any(
                     i['producto_id'] == prod['id']
@@ -120,7 +120,7 @@ with tab_nueva_of:
             st.dataframe(df_of, use_container_width=True, hide_index=True)
 
             # Preview materiales necesarios
-            with st.expander("📦 Vista previa de materiales necesarios (BOM)"):
+            with st.expander(":material/inventory_2: Vista previa de materiales necesarios (BOM)"):
                 materiales = calcular_materiales_of(st.session_state.of_items)
                 if materiales:
                     df_mat = pd.DataFrame(materiales)[[
@@ -135,18 +135,18 @@ with tab_nueva_of:
                     st.dataframe(df_mat, use_container_width=True, hide_index=True)
                     
                     total_est = sum(m['subtotal'] for m in materiales)
-                    st.metric("💰 Costo Total Estimado Insumos", f"${total_est:,.2f}")
+                    st.metric("Costo Total Estimado Insumos", f"${total_est:,.2f}")
                 else:
-                    st.info("Algunos productos no tienen BOM definido.")
+                    st.info(":material/info: Algunos productos no tienen BOM definido.")
 
             st.divider()
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("🗑️ Limpiar lista", key="btn_clear_of"):
+                if st.button(":material/delete_sweep: Limpiar lista", key="btn_clear_of"):
                     st.session_state.of_items = []
                     st.rerun()
             with col2:
-                if st.button("💾 Crear Orden de Fabricación",
+                if st.button(":material/save: Crear Orden de Fabricación",
                              type="primary", use_container_width=True,
                              key="btn_crear_of"):
                     try:
@@ -158,11 +158,11 @@ with tab_nueva_of:
                             'fecha_estimada' : fecha_estimada,
                             'notas'          : notas_of
                         }, st.session_state.of_items)
-                        st.success(f"✅ Orden de Fabricación {folio} creada.")
+                        st.success(f":material/check_circle: Orden de Fabricación {folio} creada.")
                         st.session_state.of_items = []
                         st.rerun()
                     except Exception as e:
-                        st.error(f"❌ Error: {e}")
+                        st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 2 — NUEVA OC
@@ -212,7 +212,7 @@ with tab_nueva_oc:
                 for i in of_items
             ])
             if materiales_sugeridos:
-                with st.expander("💡 Materiales sugeridos por BOM", expanded=True):
+                with st.expander(":material/lightbulb: Materiales sugeridos por BOM", expanded=True):
                     st.caption("Basado en la receta de los productos de la OF seleccionada.")
                     df_sug = pd.DataFrame(materiales_sugeridos)[[
                         'codigo', 'nombre', 'cantidad_necesaria', 'unidad'
@@ -252,7 +252,7 @@ with tab_nueva_oc:
                 )
             with col4:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("➕ Agregar", key="btn_add_oc"):
+                if st.button(":material/add: Agregar", key="btn_add_oc"):
                     ins = opciones_ins[ins_sel]
                     existe = any(
                         i['insumo_id'] == ins['id']
@@ -286,11 +286,11 @@ with tab_nueva_oc:
 
                 col1, col2 = st.columns(2)
                 with col1:
-                    if st.button("🗑️ Limpiar lista", key="btn_clear_oc"):
+                    if st.button(":material/delete_sweep: Limpiar lista", key="btn_clear_oc"):
                         st.session_state.oc_items = []
                         st.rerun()
                 with col2:
-                    if st.button("💾 Crear Orden de Compra",
+                    if st.button(":material/save: Crear Orden de Compra",
                                  type="primary", use_container_width=True,
                                  key="btn_crear_oc"):
                         try:
@@ -304,11 +304,11 @@ with tab_nueva_oc:
                                 'fecha_estimada_entrega' : fecha_est,
                                 'notas'                  : notas_oc
                             }, st.session_state.oc_items)
-                            st.success(f"✅ Orden de Compra {folio_oc} creada.")
+                            st.success(f":material/check_circle: Orden de Compra {folio_oc} creada.")
                             st.session_state.oc_items = []
                             st.rerun()
                         except Exception as e:
-                            st.error(f"❌ Error: {e}")
+                            st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — LISTA OF
@@ -482,7 +482,7 @@ with tab_detalle_of:
                     st.markdown("<br>", unsafe_allow_html=True)
                     if st.button("Actualizar OC", key="btn_upd_oc"):
                         actualizar_estatus_oc(oc_opciones[oc_sel], nuevo_est_oc)
-                        st.success("✅ Estatus OC actualizado.")
+                        st.success(":material/check_circle: Estatus OC actualizado.")
                         st.rerun()
 
             st.divider()
@@ -526,7 +526,7 @@ with tab_detalle_of:
                             fecha_cierre_of,
                             items_fabricados if items_fabricados else None
                         )
-                        st.success("✅ Estatus OF actualizado.")
+                        st.success(":material/check_circle: Estatus OF actualizado.")
                         st.rerun()
 
             # Generar HE desde OF terminada
@@ -534,9 +534,9 @@ with tab_detalle_of:
                 st.divider()
                 ofs_sin_he = [o['folio'] for o in get_ordenes_terminadas_sin_he()]
                 if orden['folio'] in ofs_sin_he:
-                    st.info("📦 Esta OF está terminada y no tiene Hoja de Entrada generada.")
+                    st.info(":material/move_to_inbox: Esta OF está terminada y no tiene Hoja de Entrada generada.")
                     if st.button(
-                        "📦 Generar Hoja de Entrada automáticamente",
+                        ":material/move_to_inbox: Generar Hoja de Entrada automáticamente",
                         type="primary", key="btn_gen_he"
                     ):
                         try:

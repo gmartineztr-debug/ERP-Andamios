@@ -16,7 +16,7 @@ from utils.database import (
 
 
 
-st.title("📦 Productos")
+st.title(":material/inventory_2: Productos")
 st.divider()
 
 SISTEMAS = ['torres_trabajo', 'multidireccional', 'hamacas', 'apuntalamientos']
@@ -29,11 +29,11 @@ SISTEMAS_LABEL = {
 UNIDADES = ['PZA', 'ML', 'M2', 'JGO', 'KIT']
 
 tab_catalogo, tab_inventario, tab_nuevo, tab_editar, tab_bom = st.tabs([
-    "📋 Catálogo",
-    "📊 Inventario",
-    "➕ Nuevo Producto",
-    "✏️ Editar Producto",
-    "🧪 BOM / Recetas"
+    ":material/list_alt: Catálogo",
+    ":material/bar_chart: Inventario",
+    ":material/add_box: Nuevo Producto",
+    ":material/edit: Editar Producto",
+    ":material/science: BOM / Recetas"
 ])
 
 # ================================================
@@ -62,7 +62,7 @@ with tab_catalogo:
     else:
         df = pd.DataFrame(productos)
         df['sistema']    = df['sistema'].map(SISTEMAS_LABEL).fillna("—")
-        df['se_fabrica'] = df['se_fabrica'].map({True: '✅ Sí', False: '🛒 Compra'})
+        df['se_fabrica'] = df['se_fabrica'].map({True: 'SI', False: 'Compra'})
         df = df[[
             'codigo', 'nombre', 'unidad', 'sistema',
             'precio_renta_dia', 'precio_venta',
@@ -91,7 +91,7 @@ with tab_inventario:
 
         bajo_stock = df[df['cantidad_disponible'] < df['stock_minimo']]
         if not bajo_stock.empty:
-            st.warning(f"⚠️ {len(bajo_stock)} producto(s) por debajo del stock mínimo")
+            st.warning(f":material/warning: {len(bajo_stock)} producto(s) por debajo del stock mínimo")
 
         df['sistema'] = df['sistema'].map(SISTEMAS_LABEL).fillna("—")
         df = df[[
@@ -120,13 +120,13 @@ with tab_inventario:
         st.divider()
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("✅ Total disponible",   int(df['Disponible'].sum()))
+            st.metric("Total disponible",   int(df['Disponible'].sum()))
         with col2:
-            st.metric("🚧 Total rentado",      int(df['Rentado'].sum()))
+            st.metric("Total rentado",      int(df['Rentado'].sum()))
         with col3:
-            st.metric("🔧 En mantenimiento",   int(df['Mantenimiento'].sum()))
+            st.metric("En mantenimiento",   int(df['Mantenimiento'].sum()))
         with col4:
-            st.metric("🗑️ Chatarra",           int(df['Chatarra'].sum()))
+            st.metric("Chatarra",           int(df['Chatarra'].sum()))
 
 # ================================================
 # TAB 3 — NUEVO PRODUCTO
@@ -165,7 +165,7 @@ with tab_nuevo:
             )
 
         st.divider()
-        submitted = st.form_submit_button("💾 Guardar producto", type="primary")
+        submitted = st.form_submit_button(":material/save: Guardar producto", type="primary")
 
         if submitted:
             if not codigo:
@@ -187,12 +187,12 @@ with tab_nuevo:
                         'sistema'         : sistema_key,
                         'stock_minimo'    : stock_minimo
                     })
-                    st.success(f"✅ Producto registrado con ID: {nuevo_id}")
+                    st.success(f":material/check_circle: Producto registrado con ID: {nuevo_id}")
                 except Exception as e:
                     if "unique" in str(e).lower():
-                        st.error("❌ Ya existe un producto con ese código.")
+                        st.error(":material/error: Ya existe un producto con ese código.")
                     else:
-                        st.error(f"❌ Error: {e}")
+                        st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 4 — EDITAR PRODUCTO
@@ -260,7 +260,7 @@ with tab_editar:
                     )
 
                 st.divider()
-                submitted = st.form_submit_button("💾 Actualizar producto", type="primary")
+                submitted = st.form_submit_button(":material/save: Actualizar producto", type="primary")
 
                 if submitted:
                     if not codigo or not nombre:
@@ -283,9 +283,9 @@ with tab_editar:
                                 'stock_minimo'    : stock_minimo,
                                 'activo'          : activo
                             })
-                            st.success("✅ Producto actualizado correctamente.")
+                            st.success(":material/check_circle: Producto actualizado correctamente.")
                         except Exception as e:
-                            st.error(f"❌ Error: {e}")
+                            st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 5 — BOM / RECETAS
@@ -296,12 +296,12 @@ with tab_bom:
 
     col1, col2 = st.columns([4, 1])
     with col2:
-        if st.button("➕ Nuevo insumo", key="btn_nuevo_insumo"):
+        if st.button(":material/add_circle: Nuevo insumo", key="btn_nuevo_insumo"):
             st.session_state.show_nuevo_insumo = True
 
     # Formulario nuevo insumo
     if st.session_state.get('show_nuevo_insumo'):
-        with st.expander("➕ Registrar nuevo insumo", expanded=True):
+        with st.expander(":material/add_box: Registrar nuevo insumo", expanded=True):
             col1, col2, col3 = st.columns(3)
             with col1:
                 ni_codigo = st.text_input("Código *", key="ni_codigo",
@@ -317,7 +317,7 @@ with tab_bom:
             ni_desc = st.text_input("Descripción", key="ni_desc")
             col1, col2 = st.columns(2)
             with col1:
-                if st.button("💾 Guardar insumo", key="btn_save_insumo"):
+                if st.button(":material/save: Guardar insumo", key="btn_save_insumo"):
                     if not ni_codigo or not ni_nombre:
                         st.error("Código y nombre son obligatorios.")
                     else:
@@ -328,14 +328,14 @@ with tab_bom:
                                 'unidad'     : ni_unidad,
                                 'descripcion': ni_desc
                             })
-                            st.success("✅ Insumo registrado.")
+                            st.success(":material/check_circle: Insumo registrado.")
                             st.session_state.show_nuevo_insumo = False
                             st.rerun()
                         except Exception as e:
                             if 'unique' in str(e).lower():
-                                st.error("❌ Ya existe un insumo con ese código.")
+                                st.error(":material/error: Ya existe un insumo con ese código.")
                             else:
-                                st.error(f"❌ Error: {e}")
+                                st.error(f":material/error: Error: {e}")
             with col2:
                 if st.button("Cancelar", key="btn_cancel_insumo"):
                     st.session_state.show_nuevo_insumo = False
@@ -344,7 +344,7 @@ with tab_bom:
     st.divider()
 
     # Catálogo de insumos
-    with st.expander("📋 Catálogo de insumos registrados"):
+    with st.expander(":material/list_alt: Catálogo de insumos registrados"):
         insumos = get_insumos()
         if insumos:
             df_ins = pd.DataFrame(insumos)[['codigo', 'nombre', 'unidad']]
@@ -433,7 +433,7 @@ with tab_bom:
                 )
             with col3:
                 st.markdown("<br>", unsafe_allow_html=True)
-                if st.button("➕ Agregar", key=f"btn_add_bom_{producto_id}"):
+                if st.button(":material/add: Agregar", key=f"btn_add_bom_{producto_id}"):
                     ins = opciones_ins[ins_sel]
                     # Verificar si ya existe
                     existe = any(
@@ -474,7 +474,7 @@ with tab_bom:
                     with col3:
                         st.markdown(item['unidad'])
                     with col4:
-                        if st.button("🗑️", key=f"bom_del_{producto_id}_{idx}"):
+                        if st.button(":material/delete:", key=f"bom_del_{producto_id}_{idx}"):
                             bom_items.pop(idx)
                             st.rerun()
 
@@ -482,14 +482,14 @@ with tab_bom:
                 col1, col2 = st.columns(2)
                 with col1:
                     if st.button(
-                        "🗑️ Limpiar receta",
+                        ":material/delete_sweep: Limpiar receta",
                         key=f"btn_clear_bom_{producto_id}"
                     ):
                         st.session_state[f'bom_items_{producto_id}'] = []
                         st.rerun()
                 with col2:
                     if st.button(
-                        "💾 Guardar receta",
+                        ":material/save: Guardar receta",
                         type="primary",
                         use_container_width=True,
                         key=f"btn_save_bom_{producto_id}"

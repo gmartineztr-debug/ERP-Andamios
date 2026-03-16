@@ -27,30 +27,30 @@ from utils.auth_manager import check_permission
 
 
 
-st.title("📄 Contratos")
+st.title(":material/description: Contratos")
 st.divider()
 
 ESTATUS_LABEL = {
-    'activo'    : '🟢 Activo',
-    'vencido'   : '🔴 Vencido',
-    'renovado'  : '🔄 Renovado',
-    'cancelado' : '❌ Cancelado',
-    'finalizado': '✅ Finalizado',
-    'venta'     : '🛒 Venta'
+    'activo'    : 'Activo',
+    'vencido'   : 'Vencido',
+    'renovado'  : 'Renovado',
+    'cancelado' : 'Cancelado',
+    'finalizado': 'Finalizado',
+    'venta'     : 'Venta'
 }
 
 TIPO_LABEL = {
-    'renta' : '📦 Renta',
-    'venta' : '🛒 Venta',
-    'armado': '🔧 Armado'
+    'renta' : 'Renta',
+    'venta' : 'Venta',
+    'armado': 'Armado'
 }
 
 tab_seguimiento, tab_cotizaciones, tab_lista, tab_nuevo, tab_detalle = st.tabs([
-    "📊 Seguimiento",
-    "📋 Cotizaciones Aprobadas",
-    "📄 Lista De Contratos",
-    "➕ Nuevo Contrato",
-    "🔍 Ver Detalle"
+    ":material/insights: Seguimiento",
+    ":material/assignment_turned_in: Cotizaciones Aprobadas",
+    ":material/list_alt: Lista De Contratos",
+    ":material/add_box: Nuevo Contrato",
+    ":material/search: Ver Detalle"
 ])
 
 # ================================================
@@ -70,21 +70,20 @@ with tab_seguimiento:
         df_base['atraso'] = df_base['fecha_fin'].apply(lambda x: max(0, (hoy - x).days))
         
         # 1. Contratos con ATRASO
-        df_atraso = df_base[df_base['atraso'] > 0].sort_values('atraso', ascending=False)
-        st.markdown(f"#### 🔴 Contratos con Atraso ({len(df_atraso)})")
+        st.markdown(f"#### :material/error: Contratos con Atraso ({len(df_atraso)})")
         if not df_atraso.empty:
             df_atraso_display = df_atraso[['folio', 'cliente_nombre', 'atraso', 'fecha_fin', 'monto_total']]
             df_atraso_display.columns = ['Folio', 'Cliente', 'Días Atraso', 'Venció el', 'Monto Total']
             st.dataframe(df_atraso_display, use_container_width=True, hide_index=True)
         else:
-            st.success("✅ No hay contratos con atraso.")
+            st.success(":material/check_circle: No hay contratos con atraso.")
             
         st.divider()
         
         # 2. Contratos PROXIMOS A VENCER (Próximos 7 días)
         df_vencer = df_base[(df_base['atraso'] == 0) & 
                             (df_base['fecha_fin'] <= hoy + timedelta(days=7))].sort_values('fecha_fin')
-        st.markdown(f"#### 🟠 Próximos a Vencer (7 días) ({len(df_vencer)})")
+        st.markdown(f"#### :material/warning: Próximos a Vencer (7 días) ({len(df_vencer)})")
         if not df_vencer.empty:
             df_vencer_display = df_vencer[['folio', 'cliente_nombre', 'fecha_fin', 'monto_total']]
             df_vencer_display.columns = ['Folio', 'Cliente', 'Vence el', 'Monto Total']
@@ -99,7 +98,7 @@ with tab_seguimiento:
         opciones_seg = {f"{c['folio']} — {c['cliente_nombre']}": c['id'] for c in contratos_todos}
         sel_seg = st.selectbox("Selecciona un contrato para inspeccionar logística y pagos", list(opciones_seg.keys()), key="seg_quick")
         if sel_seg:
-            if st.button("👁️ Ver detalle completo", key="btn_jump_detalle"):
+            if st.button(":material/visibility: Ver detalle completo", key="btn_jump_detalle"):
                 st.session_state.contrato_id_detalle = opciones_seg[sel_seg]
                 st.info("Cargado. Cambia a la pestaña '🔍 Ver detalle' para inspeccionar.")
 
@@ -158,9 +157,9 @@ with tab_lista:
         df['tipo_contrato'] = df['tipo_contrato'].map(TIPO_LABEL)
         df['monto_total']  = df['monto_total'].apply(lambda x: f"${x:,.2f}")
         df['anticipo_estatus'] = df['anticipo_estatus'].map({
-            'pendiente': '⏳ Pendiente',
-            'parcial'  : '🔶 Parcial',
-            'completo' : '✅ Completo'
+            'pendiente': 'Pendiente',
+            'parcial'  : 'Parcial',
+            'completo' : 'Completo'
         })
         for col_fecha in ['fecha_inicio', 'fecha_fin']:
             if col_fecha in df.columns:
@@ -188,7 +187,7 @@ with tab_lista:
             st.metric("🔴 Vencidos", len(contratos_df[contratos_df['estatus'] == 'vencido']))
         with col3:
             pendientes = len(contratos_df[contratos_df['anticipo_estatus'] == 'pendiente'])
-            st.metric("⏳ Anticipo pendiente", pendientes)
+            st.metric("Anticipo pendiente", pendientes)
         with col4:
             total = contratos_df['monto_total'].sum()
             st.metric("💰 Total contratos", f"${total:,.2f}")
@@ -215,7 +214,7 @@ with tab_nuevo:
 
     if cot:
         # Mostrar resumen cotización
-        with st.expander("📋 Ver resumen de cotización", expanded=True):
+        with st.expander(":material/list_alt: Ver resumen de cotización", expanded=True):
             col1, col2, col3 = st.columns(3)
             with col1:
                 st.markdown(f"**Cliente:** {cot['cliente_nombre']}")
@@ -304,11 +303,11 @@ with tab_nuevo:
             anticipo_fecha = st.date_input("Fecha de pago", value=date.today())
 
             if anticipo_pagado >= anticipo_requerido:
-                st.success("✅ Anticipo completo")
+                st.success(":material/check_circle: Anticipo completo")
             elif anticipo_pagado > 0:
-                st.warning(f"⚠️ Anticipo parcial — faltan ${anticipo_requerido - anticipo_pagado:,.2f}")
+                st.warning(f":material/warning: Anticipo parcial — faltan ${anticipo_requerido - anticipo_pagado:,.2f}")
             else:
-                st.error("⏳ Anticipo pendiente")
+                st.error(":material/hourglass_empty: Anticipo pendiente")
 
             st.divider()
             st.markdown("#### Pagaré")
@@ -383,10 +382,10 @@ with tab_nuevo:
                         from utils.database import actualizar_total_facturado_obra
                         actualizar_total_facturado_obra(obra_id)
 
-                    st.success(f"✅ Contrato {folio} generado correctamente.")
+                    st.success(f":material/check_circle: Contrato {folio} generado correctamente.")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"❌ Error: {e}")
+                    st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 4 — DETALLE
@@ -444,9 +443,9 @@ with tab_detalle:
                 st.markdown(f"**Anticipo requerido:** ${float(ctr['anticipo_requerido']):,.2f}")
                 st.markdown(f"**Anticipo pagado:** ${float(ctr['anticipo_pagado']):,.2f}")
                 ant_est = {
-                    'pendiente': '⏳ Pendiente',
-                    'parcial'  : '🔶 Parcial',
-                    'completo' : '✅ Completo'
+                    'pendiente': 'Pendiente',
+                    'parcial'  : 'Parcial',
+                    'completo' : 'Completo'
                 }.get(ctr['anticipo_estatus'], '—')
                 st.markdown(f"**Estatus anticipo:** {ant_est}")
 
@@ -460,7 +459,7 @@ with tab_detalle:
             st.divider()
             
             # SECCIÓN LOGÍSTICA
-            st.subheader("🚚 Flujo Logístico (Movimientos)")
+            st.subheader(":material/local_shipping: Flujo Logístico (Movimientos)")
             col_log1, col_log2 = st.columns(2)
             
             with col_log1:
@@ -488,7 +487,7 @@ with tab_detalle:
             st.divider()
 
             # Pagaré
-            with st.expander("📝 Datos del Pagaré"):
+            with st.expander(":material/edit_note: Datos del Pagaré"):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.markdown(f"**Número:** {ctr.get('pagare_numero') or '—'}")
@@ -497,7 +496,7 @@ with tab_detalle:
                     st.markdown(f"**Firmante:** {ctr.get('pagare_firmante') or '—'}")
                     pv = ctr.get('pagare_fecha_vencimiento')
                     st.markdown(f"**Vencimiento:** {pv.strftime('%d/%m/%Y') if pv else '—'}")
-                    st.markdown(f"**Firmado:** {'✅ Sí' if ctr['pagare_firmado'] else '❌ No'}")
+                    st.markdown(f"**Firmado:** {'SI' if ctr['pagare_firmado'] else 'NO'}")
 
             # Productos
             st.divider()
@@ -539,7 +538,7 @@ with tab_detalle:
                 if st.button("Actualizar estatus"):
                     if check_permission('admin'):
                         actualizar_estatus_contrato(contrato_id, nuevo_estatus)
-                        st.success("✅ Estatus actualizado.")
+                        st.success(":material/check_circle: Estatus actualizado.")
                         st.rerun()
                     else:
                         st.error("🚫 No tienes permisos de administrador para cambiar estatus.")
@@ -568,7 +567,7 @@ with tab_detalle:
                     if st.button("Asignar obra"):
                         if check_permission('admin'):
                             asignar_obra_contrato(contrato_id, opciones_obras[obra_nueva])
-                            st.success("✅ Obra asignada correctamente.")
+                            st.success(":material/check_circle: Obra asignada correctamente.")
                             st.rerun()
                         else:
                             st.error("🚫 No tienes permisos de administrador para asignar obras.")
@@ -577,18 +576,18 @@ with tab_detalle:
 
             # Botón PDF contrato
             st.divider()
-            if st.button("📄 Generar PDF contrato", type="primary"):
+            if st.button(":material/picture_as_pdf: Generar PDF contrato", type="primary"):
                 try:
                     from utils.pdf_generator import generar_pdf_contrato
                     pdf_bytes = generar_pdf_contrato(dict(ctr), [dict(i) for i in items])
                     st.download_button(
-                        label="⬇️ Descargar contrato PDF",
+                        label=":material/file_download: Descargar contrato PDF",
                         data=pdf_bytes,
                         file_name=f"Contrato_{ctr['folio']}.pdf",
                         mime="application/pdf"
                     )
                 except Exception as e:
-                    st.error(f"❌ Error generando PDF: {e}")
+                    st.error(f":material/picture_as_pdf: Error generando PDF: {e}")
 
             if ctr.get('notas'):
                 st.info(f"📝 {ctr['notas']}")

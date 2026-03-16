@@ -14,16 +14,16 @@ from datetime import datetime, date
 
 
 
-st.title("👥 Clientes")
+st.title(":material/groups: Clientes")
 st.divider()
 
 # ================================================
 # TABS PRINCIPALES
 # ================================================
 tab_lista, tab_nuevo, tab_editar = st.tabs([
-    "📋 Lista De Clientes",
-    "➕ Nuevo Cliente",
-    "✏️ Editar Cliente"
+    ":material/list_alt: Lista De Clientes",
+    ":material/person_add: Nuevo Cliente",
+    ":material/edit: Editar Cliente"
 ])
 
 # ================================================
@@ -61,7 +61,7 @@ with tab_lista:
         with col_ex_a:
             csv_data = export_to_csv(df)
             st.download_button(
-                label="📥 Descargar Excel",
+                label=":material/file_download: Descargar Excel",
                 data=csv_data,
                 file_name=f"clientes_{datetime.now().strftime('%Y%m%d')}.csv",
                 mime="text/csv",
@@ -70,7 +70,7 @@ with tab_lista:
         with col_ex_b:
             pdf_data = export_to_pdf(df, title="Listado de Clientes")
             st.download_button(
-                label="📄 Descargar PDF",
+                label=":material/picture_as_pdf: Descargar PDF",
                 data=pdf_data,
                 file_name=f"clientes_{datetime.now().strftime('%Y%m%d')}.pdf",
                 mime="application/pdf",
@@ -104,7 +104,7 @@ with tab_nuevo:
             )
 
         st.divider()
-        submitted = st.form_submit_button("💾 Guardar cliente", type="primary")
+        submitted = st.form_submit_button(":material/save: Guardar cliente", type="primary")
 
         if submitted:
             # Validaciones
@@ -126,12 +126,12 @@ with tab_nuevo:
                         'tipo_cliente'  : tipo_cliente,
                         'limite_credito': limite_credito
                     })
-                    st.success(f"✅ Cliente registrado con ID: {nuevo_id}")
+                    st.success(f":material/check_circle: Cliente registrado con ID: {nuevo_id}")
                 except Exception as e:
                     if "unique" in str(e).lower():
-                        st.error("❌ Ya existe un cliente con ese RFC.")
+                        st.error(":material/error: Ya existe un cliente con ese RFC.")
                     else:
-                        st.error(f"❌ Error: {e}")
+                        st.error(f":material/error: Error: {e}")
 
 # ================================================
 # TAB 3 — EDITAR CLIENTE
@@ -176,7 +176,7 @@ with tab_editar:
                     )
 
                 st.divider()
-                submitted = st.form_submit_button("💾 Actualizar cliente", type="primary")
+                submitted = st.form_submit_button(":material/save: Actualizar cliente", type="primary")
 
                 if submitted:
                     if not razon_social:
