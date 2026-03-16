@@ -63,3 +63,71 @@ def export_to_pdf(df, title="Reporte ERP"):
     pdf = buffer.getvalue()
     buffer.close()
     return pdf
+
+def generate_monthly_report(metrics, top_products, stock_critico):
+    """Genera un PDF consolidado de Corte Mensual"""
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    # Header
+    elements.append(Paragraph("📊 Reporte de Corte Mensual - ERP", styles['Title']))
+    elements.append(Paragraph(f"Generado el: {datetime.now().strftime('%d/%m/%Y %H:%M')}", styles['Normal']))
+    elements.append(Spacer(1, 20))
+    
+    # Financial Summary
+    elements.append(Paragraph("💰 Resumen Financiero", styles['Heading2']))
+    fin_data = [
+        ["Concepto", "Valor"],
+        ["Facturación Mensual", f"${float(metrics['facturacion_mes'] or 0):,.2f}"],
+        ["Anticipos Pendientes", f"${float(metrics['anticipos_pendientes'] or 0):,.2f}"],
+        ["Contratos Activos", str(metrics['contratos_activos'])]
+    ]
+    t_fin = Table(fin_data, colWidths=[200, 200])
+    t_fin.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.darkblue),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('PADDING', (0,0), (-1,-1), 6)
+    ]))
+    elements.append(t_fin)
+    elements.append(Spacer(1, 20))
+    
+    # Inventory Summary
+    elements.append(Paragraph("📦 Estado de Inventario", styles['Heading2']))
+    inv_data = [
+        ["Estatus", "Piezas"],
+        ["Disponible", str(int(metrics['total_disponible'] or 0))],
+        ["En Renta", str(int(metrics['total_rentado'] or 0))],
+        ["Mantenimiento", str(int(metrics['total_mantenimiento'] or 0))],
+        ["Chatarra", str(int(metrics['total_chatarra'] or 0))]
+    ]
+    t_inv = Table(inv_data, colWidths=[200, 200])
+    t_inv.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.darkgreen),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+        ('PADDING', (0,0), (-1,-1), 6)
+    ]))
+    elements.append(t_inv)
+    elements.append(Spacer(1, 20))
+    
+    # Top Products
+    if top_products:
+        elements.append(Paragraph("🔝 Top 5 Productos en Campo", styles['Heading2']))
+        top_data = [["Código", "Nombre", "Cantidad en Renta"]]
+        for p in top_products:
+            top_data.append([p['codigo'], p['nombre'], str(int(p['cantidad_rentada']))])
+        t_top = Table(top_data, colWidths=[100, 200, 100])
+        t_top.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.orange),
+            ('GRID', (0,0), (-1,-1), 1, colors.black),
+            ('FONTSIZE', (0,1), (-1,-1), 9)
+        ]))
+        elements.append(t_top)
+    
+    doc.build(elements)
+    pdf = buffer.getvalue()
+    buffer.close()
+    return pdf

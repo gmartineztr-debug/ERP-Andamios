@@ -11,9 +11,10 @@ from utils.database import (
     get_facturacion_mensual,
     get_stock_critico,
     get_contratos_proximos,
-    get_facturacion_periodo
+    get_facturacion_periodo,
+    get_top_productos
 )
-from utils.reporting import export_to_csv, export_to_pdf
+from utils.reporting import export_to_csv, export_to_pdf, generate_monthly_report
 from datetime import datetime
 from utils.auth_manager import init_auth, login_screen, logout
 
@@ -104,6 +105,17 @@ def show_dashboard():
                 value=date.today(),
                 key="dash_ff"
             )
+        
+        # Botón de Corte Mensual
+        report_data = generate_monthly_report(metricas if 'metricas' in locals() else get_dashboard_metricas(), top_prod if 'top_prod' in locals() else [], stock_crit if 'stock_crit' in locals() else [])
+        st.download_button(
+            label="📄 Descargar Corte Mensual (PDF)",
+            data=report_data,
+            file_name=f"corte_mensual_{datetime.now().strftime('%Y%m')}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary"
+        )
 
     st.divider()
 
@@ -114,6 +126,7 @@ def show_dashboard():
         stock_crit = get_stock_critico()
         proximos   = get_contratos_proximos(30)
         fac_periodo = get_facturacion_periodo(fecha_inicio_filtro, fecha_fin_filtro)
+        top_prod    = get_top_productos(5)
     except Exception as e:
         st.error(f"Error cargando datos: {e}")
         st.stop()
@@ -309,43 +322,49 @@ def show_dashboard():
                 textfont_size=11
             ))
             fig_pie.update_layout(
-                height=240,
+                height=220,
                 margin=dict(l=0, r=0, t=10, b=0),
                 showlegend=False,
                 paper_bgcolor='white'
             )
-            fig_pie.add_annotation(
-                text=f"<b>{int(total_general)}</b><br>piezas",
-                x=0.5, y=0.5,
-                font_size=14,
-                showarrow=False
-            )
             st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("Sin datos de inventario.")
+            
+            # Eficiencia de Cobro
+            if float(metricas['facturacion_mes'] or 0) > 0:
+                eficiencia = (float(metricas['facturacion_mes'] or 0) - float(metricas['anticipos_pendientes'] or 0)) / float(metricas['facturacion_mes'] or 0) * 100
+                st.markdown(f"**🎯 Eficiencia de Cobro (Mes): {eficiencia:.1f}%**")
+                st.progress(eficiencia / 100)
 
     with col_stock:
-        st.markdown('<p class="seccion-titulo">Stock crítico</p>', unsafe_allow_html=True)
-
-        criticos = int(metricas['productos_stock_critico'] or 0)
-        if criticos == 0:
-            st.success("✅ Todos los productos sobre stock mínimo.")
+        st.markdown('<p class="seccion-titulo">Top 5 Productos Rentados</p>', unsafe_allow_html=True)
+        if top_prod:
+            df_top = pd.DataFrame(top_prod)
+            fig_top = go.Figure(go.Bar(
+                x=df_top['cantidad_rentada'],
+                y=df_top['codigo'],
+                orientation='h',
+                marker_color='#3B82F6'
+            ))
+            fig_top.update_layout(
+                height=220,
+                margin=dict(l=10, r=10, t=10, b=10),
+                xaxis=dict(title="Unidades en campo"),
+                yaxis=dict(autorange="reversed")
+            )
+            st.plotly_chart(fig_top, use_container_width=True)
         else:
-            st.warning(f"⚠️ {criticos} producto(s) bajo stock mínimo.")
-            if stock_crit:
-                df_sc = pd.DataFrame(stock_crit)[[
-                    'codigo', 'nombre', 'cantidad_disponible',
-                    'stock_minimo', 'faltante'
-                ]]
-                df_sc.columns = ['Código', 'Producto', 'Disponible', 'Mínimo', 'Faltante']
-                st.dataframe(
-                    df_sc,
-                    use_container_width=True,
-                    hide_index=True,
-                    height=200
-                )
+            st.info("No hay productos rentados.")
 
     with col_accesos:
+        st.markdown('<p class="seccion-titulo">Stock Crítico</p>', unsafe_allow_html=True)
+        criticos = int(metricas['productos_stock_critico'] or 0)
+        if criticos == 0:
+            st.success("✅ Todo OK")
+        else:
+            st.warning(f"⚠️ {criticos} bajo mínimo")
+            if stock_crit:
+                for s in stock_crit[:3]:
+                    st.caption(f"**{s['codigo']}**: {int(s['cantidad_disponible'])}/{int(s['stock_minimo'])}")
         st.markdown('<p class="seccion-titulo">Accesos rápidos</p>', unsafe_allow_html=True)
         st.page_link("pages/03_cotizaciones.py",    label="➕ Nueva cotización")
         st.page_link("pages/05_contratos.py",       label="📄 Nuevo contrato")

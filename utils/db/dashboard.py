@@ -38,3 +38,16 @@ def get_facturacion_periodo(fecha_inicio, fecha_fin):
             WHERE fecha_contrato BETWEEN %s AND %s AND estatus NOT IN ('cancelado')
         """, (fecha_inicio, fecha_fin))
         return cur.fetchone()
+
+def get_top_productos(limite=5):
+    """Retorna los productos con mayor cantidad rentada actualmente"""
+    with get_cursor() as (cur, conn):
+        cur.execute("""
+            SELECT p.codigo, p.nombre, i.cantidad_rentada
+            FROM inv_master i
+            JOIN cat_productos p ON i.producto_id = p.id
+            WHERE i.cantidad_rentada > 0
+            ORDER BY i.cantidad_rentada DESC
+            LIMIT %s
+        """, (limite,))
+        return cur.fetchall()

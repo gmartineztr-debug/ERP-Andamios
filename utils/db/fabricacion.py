@@ -53,12 +53,13 @@ def guardar_bom_producto(producto_id, items):
         conn.commit()
 
 def calcular_materiales_of(items_of):
-    """Calcula materiales necesarios para una OF"""
+    """Calcula materiales necesarios para una OF e incluye costos estimados"""
     with get_cursor() as (cur, conn):
         materiales = {}
         for item in items_of:
             cur.execute("""
-                SELECT b.insumo_id, i.codigo, i.nombre, i.unidad, b.cantidad_por_pieza
+                SELECT b.insumo_id, i.codigo, i.nombre, i.unidad, b.cantidad_por_pieza,
+                (SELECT costo_unitario FROM fab_oc_items WHERE insumo_id = b.insumo_id ORDER BY created_at DESC LIMIT 1) as last_cost
                 FROM fab_bom b
                 JOIN fab_insumos i ON b.insumo_id = i.id
                 WHERE b.producto_id = %s
@@ -68,8 +69,11 @@ def calcular_materiales_of(items_of):
             for linea in bom:
                 ins_id = linea['insumo_id']
                 cant = float(linea['cantidad_por_pieza']) * item['cantidad']
+                costo = float(linea['last_cost'] or 0)
+                
                 if ins_id in materiales:
                     materiales[ins_id]['cantidad_necesaria'] += cant
+                    materiales[ins_id]['subtotal'] = materiales[ins_id]['cantidad_necesaria'] * costo
                 else:
                     materiales[ins_id] = {
                         'insumo_id': ins_id,
@@ -77,7 +81,8 @@ def calcular_materiales_of(items_of):
                         'nombre': linea['nombre'],
                         'unidad': linea['unidad'],
                         'cantidad_necesaria': cant,
-                        'costo_unitario': 0, 'subtotal': 0
+                        'costo_unitario': costo,
+                        'subtotal': cant * costo
                     }
         return list(materiales.values())
 

@@ -52,7 +52,7 @@ from .db.finanzas import (
 )
 from .db.dashboard import (
     get_dashboard_metricas, get_facturacion_mensual, get_stock_critico,
-    get_contratos_proximos, get_facturacion_periodo
+    get_contratos_proximos, get_facturacion_periodo, get_top_productos
 )
 from .db.auth import (
     create_auth_table_if_not_exists, get_usuario_por_username,

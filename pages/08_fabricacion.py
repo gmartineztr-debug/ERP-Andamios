@@ -124,13 +124,18 @@ with tab_nueva_of:
                 materiales = calcular_materiales_of(st.session_state.of_items)
                 if materiales:
                     df_mat = pd.DataFrame(materiales)[[
-                        'codigo', 'nombre', 'cantidad_necesaria', 'unidad'
+                        'codigo', 'nombre', 'cantidad_necesaria', 'unidad', 'costo_unitario', 'subtotal'
                     ]]
-                    df_mat.columns = ['Código', 'Material', 'Cantidad necesaria', 'Unidad']
+                    df_mat.columns = ['Código', 'Material', 'Cantidad necesaria', 'Unidad', 'Costo Unit.', 'Subtotal']
                     df_mat['Cantidad necesaria'] = df_mat['Cantidad necesaria'].apply(
                         lambda x: f"{x:.4f}"
                     )
+                    df_mat['Costo Unit.'] = df_mat['Costo Unit.'].apply(lambda x: f"${x:,.2f}")
+                    df_mat['Subtotal'] = df_mat['Subtotal'].apply(lambda x: f"${x:,.2f}")
                     st.dataframe(df_mat, use_container_width=True, hide_index=True)
+                    
+                    total_est = sum(m['subtotal'] for m in materiales)
+                    st.metric("💰 Costo Total Estimado Insumos", f"${total_est:,.2f}")
                 else:
                     st.info("Algunos productos no tienen BOM definido.")
 

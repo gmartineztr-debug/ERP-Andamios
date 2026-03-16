@@ -13,7 +13,9 @@ from utils.database import (
     get_conteos,
     get_conteo_items,
     actualizar_conteo_item,
-    aplicar_ajuste_conteo
+    aplicar_ajuste_conteo,
+    get_contratos_con_equipo_en_campo,
+    get_saldo_en_campo
 )
 from utils.reporting import export_to_csv, export_to_pdf
 from datetime import datetime
@@ -24,8 +26,9 @@ from utils.auth_manager import check_permission
 st.title("📦 Control de Inventario")
 st.divider()
 
-tab_bitacora, tab_nuevo_conteo, tab_conteos = st.tabs([
+tab_bitacora, tab_saldo_obra, tab_nuevo_conteo, tab_conteos = st.tabs([
     "📋 Bitácora De Movimientos",
+    "🏗️ Saldo En Obra",
     "➕ Nuevo Conteo Físico",
     "🔍 Conteos Realizados"
 ])
@@ -108,19 +111,18 @@ with tab_bitacora:
 
         st.divider()
 
-        df_show = df[[
-            'fecha', 'codigo', 'producto_nombre',
-            'tipo_movimiento', 'referencia_folio',
-            'delta_disponible', 'delta_rentado',
-            'delta_mantenimiento', 'delta_chatarra'
-        ]].fillna('—')
-        df_show.columns = [
-            'Fecha', 'Código', 'Producto',
-            'Tipo', 'Referencia',
-            'Δ Disponible', 'Δ Rentado',
-            'Δ Mantenimiento', 'Δ Chatarra'
-        ]
-        st.dataframe(df_show, use_container_width=True, hide_index=True)
+        # Estilos para deltas
+        def style_delta(v):
+            if not isinstance(v, (int, float)): return ''
+            if v > 0: return 'color: #10B981; font-weight: 500;'
+            if v < 0: return 'color: #EF4444; font-weight: 500;'
+            return 'color: #94A3B8;'
+
+        st.dataframe(
+            df_show.style.applymap(style_delta, subset=['Δ Disponible', 'Δ Rentado', 'Δ Mantenimiento', 'Δ Chatarra']),
+            use_container_width=True, 
+            hide_index=True
+        )
 
         # Botones de exportación
         col_ex_a, col_ex_b, col_ex_empty = st.columns([1, 1, 3])
@@ -170,6 +172,74 @@ with tab_bitacora:
                             st.caption(f"Rentado: {mov['rentado_despues']}")
                             st.caption(f"Mantenimiento: {mov['mantenimiento_despues']}")
                         st.divider()
+
+# ================================================
+# TAB 2 — SALDO EN OBRA
+# ================================================
+with tab_saldo_obra:
+    st.subheader("Inventario actualmente en obra")
+    st.caption("Resumen detallado de las piezas que se encuentran en posesión de los clientes.")
+
+    contratos_campo = get_contratos_con_equipo_en_campo()
+
+    if not contratos_campo:
+        st.info("No hay equipo en campo actualmente. Todas las piezas están en almacén.")
+    else:
+        opciones_c = {
+            f"{c['folio']} — {c['cliente_nombre']} ({c['obra_nombre'] or 'Sin Obra'})": c
+            for c in contratos_campo
+        }
+        c_sel = st.selectbox(
+            "Selecciona un contrato/obra para ver el detalle",
+            list(opciones_c.keys()),
+            key="so_contrato_sel"
+        )
+        data_c = opciones_c[c_sel]
+
+        # Obtener saldo detallado
+        saldo = get_saldo_en_campo(data_c['id'])
+
+        if not saldo:
+            st.warning("No se encontró saldo detallado para este contrato.")
+        else:
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Cliente:** {data_c['cliente_nombre']}")
+                st.markdown(f"**Obra:** {data_c['obra_nombre'] or '—'}")
+            with col2:
+                st.markdown(f"**Folio Contrato:** {data_c['folio']}")
+                st.markdown(f"**Dirección:** {data_c['direccion_obra'] or '—'}")
+
+            st.divider()
+
+            df_so = pd.DataFrame(saldo)
+            df_so_show = df_so[[
+                'codigo', 'nombre', 'total_enviado',
+                'total_devuelto', 'saldo_en_campo'
+            ]]
+            df_so_show.columns = [
+                'Código', 'Producto', 'Enviado',
+                'Devuelto', 'En Campo'
+            ]
+            
+            # Estilo para destacar el saldo
+            st.dataframe(
+                df_so_show.style.applymap(
+                    lambda x: 'background-color: #f8fafc; font-weight: bold;' if isinstance(x, (int, float)) and x > 0 else '',
+                    subset=['En Campo']
+                ),
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # Exportar saldo
+            csv_so = export_to_csv(df_so_show)
+            st.download_button(
+                label=f"📥 Exportar Saldo {data_c['folio']}",
+                data=csv_so,
+                file_name=f"saldo_campo_{data_c['folio']}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime="text/csv"
+            )
 
 # ================================================
 # TAB 2 — NUEVO CONTEO FÍSICO
