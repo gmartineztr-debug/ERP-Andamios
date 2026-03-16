@@ -44,8 +44,8 @@ tab_devolucion, tab_compra, tab_fabricacion, tab_lista, tab_detalle = st.tabs([
     "🔄 Devolución",
     "🛒 Compra",
     "🔧 Fabricación",
-    "📄 Lista",
-    "🔍 Detalle"
+    "📄 Lista De Entradas",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

@@ -48,9 +48,9 @@ ESTATUS_OC_LABEL = {
 tab_nueva_of, tab_nueva_oc, tab_lista_of, tab_lista_oc, tab_detalle_of = st.tabs([
     "➕ Nueva OF",
     "🛒 Nueva OC",
-    "📋 Órdenes de Fabricación",
-    "📋 Órdenes de Compra",
-    "🔍 Detalle OF"
+    "📋 Órdenes De Fabricación",
+    "📋 Órdenes De Compra",
+    "🔍 Ver Detalle OF"
 ])
 
 # ================================================

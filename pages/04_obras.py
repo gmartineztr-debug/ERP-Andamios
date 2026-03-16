@@ -27,9 +27,9 @@ ESTATUS_LABEL = {
 }
 
 tab_lista, tab_nueva, tab_detalle = st.tabs([
-    "📋 Lista de obras",
-    "➕ Nueva obra",
-    "🔍 Ver detalle"
+    "📋 Lista De Obras",
+    "➕ Nueva Obra",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

@@ -22,10 +22,10 @@ st.title("🔄 Renovaciones de Contratos")
 st.divider()
 
 tab_alertas, tab_renovar, tab_historial, tab_edocuenta = st.tabs([
-    "🚨 Alertas de vencimiento",
-    "🔄 Renovar contrato",
-    "📋 Historial de renovaciones",
-    "📊 Estado de cuenta"
+    "🚨 Alertas De Vencimiento",
+    "🔄 Renovar Contrato",
+    "📋 Historial De Renovaciones",
+    "📊 Estado De Cuenta"
 ])
 
 # ================================================

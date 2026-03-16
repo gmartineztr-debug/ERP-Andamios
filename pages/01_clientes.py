@@ -9,6 +9,8 @@ from utils.database import (
     actualizar_cliente
 )
 from utils.reporting import export_to_csv, export_to_pdf
+import datetime
+from datetime import datetime, date
 
 
 
@@ -19,9 +21,9 @@ st.divider()
 # TABS PRINCIPALES
 # ================================================
 tab_lista, tab_nuevo, tab_editar = st.tabs([
-    "📋 Lista de clientes",
-    "➕ Nuevo cliente",
-    "✏️ Editar cliente"
+    "📋 Lista De Clientes",
+    "➕ Nuevo Cliente",
+    "✏️ Editar Cliente"
 ])
 
 # ================================================

@@ -47,10 +47,10 @@ TIPO_LABEL = {
 
 tab_seguimiento, tab_cotizaciones, tab_lista, tab_nuevo, tab_detalle = st.tabs([
     "📊 Seguimiento",
-    "📋 Cotizaciones aprobadas",
-    "📄 Lista de contratos",
-    "➕ Nuevo contrato",
-    "🔍 Ver detalle"
+    "📋 Cotizaciones Aprobadas",
+    "📄 Lista De Contratos",
+    "➕ Nuevo Contrato",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

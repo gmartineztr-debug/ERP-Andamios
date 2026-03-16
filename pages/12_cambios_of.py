@@ -25,9 +25,9 @@ st.caption("Registra interrupciones, cambios de plan o cierres parciales de Órd
 st.divider()
 
 tab_nueva, tab_lista, tab_detalle = st.tabs([
-    "➕ Nueva SC",
-    "📋 Lista de SC",
-    "🔍 Detalle SC"
+    "➕ Nueva Solicitud De Cambio",
+    "📋 Lista De Solicitudes De Cambio",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

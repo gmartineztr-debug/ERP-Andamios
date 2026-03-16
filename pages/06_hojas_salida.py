@@ -28,10 +28,10 @@ ESTATUS_LABEL = {
 }
 
 tab_contratos, tab_nueva, tab_lista, tab_detalle = st.tabs([
-    "📋 Contratos pendientes",
-    "➕ Nueva hoja de salida",
-    "📄 Lista de hojas",
-    "🔍 Ver detalle"
+    "📋 Contratos Pendientes",
+    "➕ Nueva Hoja De Salida",
+    "📄 Lista De Hojas",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

@@ -34,10 +34,10 @@ ESTATUS_LABEL = {
 }
 
 tab_nuevo, tab_saldos, tab_lista, tab_detalle = st.tabs([
-    "➕ Registrar pago",
-    "⏳ Saldos pendientes",
-    "📋 Lista de pagos",
-    "🔍 Detalle por contrato"
+    "➕ Registrar Pago",
+    "⏳ Saldos Pendientes",
+    "📋 Lista De Pagos",
+    "🔍 Detalle Por Contrato"
 ])
 
 # ================================================

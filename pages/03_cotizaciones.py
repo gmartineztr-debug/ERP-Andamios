@@ -36,9 +36,9 @@ ESTATUS_COLOR = {
 }
 
 tab_lista, tab_nueva, tab_detalle = st.tabs([
-    "📋 Lista",
-    "➕ Nueva cotización",
-    "🔍 Ver detalle"
+    "📋 Lista De Cotizaciones",
+    "➕ Nueva Cotización",
+    "🔍 Ver Detalle"
 ])
 
 # ================================================

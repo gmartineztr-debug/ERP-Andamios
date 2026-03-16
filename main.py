@@ -17,6 +17,14 @@ from utils.reporting import export_to_csv, export_to_pdf
 from datetime import datetime
 from utils.auth_manager import init_auth, login_screen, logout
 
+# 1. Configuración de página (DEBE ser lo primero)
+st.set_page_config(
+    page_title="Andamios ERP",
+    page_icon="🏗️",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 def show_dashboard():
     # ─── Estilos ────────────────────────────────────────────────────────────────
     st.markdown("""
@@ -346,44 +354,50 @@ def show_dashboard():
         st.page_link("pages/09_renovaciones.py",    label="🔄 Renovaciones")
         st.page_link("pages/08_fabricacion.py",     label="🔧 Fabricación")
 
-# configuration
-st.set_page_config(
-    page_title="Andamios ERP",
-    page_icon="🏗️",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
 # Inicializar Auth
 init_auth()
 
+# 3. Preparar páginas
+pg_dashboard = st.Page(show_dashboard, title="Dashboard", icon="📊", default=True)
+pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon="👥")
+pg_productos = st.Page("pages/02_productos.py", title="Productos", icon="📦")
+pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon="📋")
+pg_obras = st.Page("pages/04_obras.py", title="Obras", icon="🏗️")
+pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon="📄")
+pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas De Salida", icon="🚚")
+pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon="📥")
+pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon="🔧")
+pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon="🔄")
+pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon="💰")
+pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon="📊")
+pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon="🔁")
+
 if not st.session_state.authenticated:
-    login_screen()
-    st.stop()
+    pg = st.navigation([st.Page(login_screen, title="Iniciar Sesión", icon="🔒")])
+else:
+    with st.sidebar:
+        st.markdown(f"### 🏗️ ERP ICAM")
+        st.markdown(f"👤 **{st.session_state.user_info['nombre']}**")
+        st.caption(f"Rol: {st.session_state.user_info['rol'].capitalize()}")
+        if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True):
+            logout()
+        st.divider()
 
-# Sidebar - Info de usuario y Logout
-with st.sidebar:
-    st.markdown("---")
-    st.markdown(f"👤 **Usuario:** {st.session_state.user_info['nombre']}")
-    st.markdown(f"🔑 **Rol:** {st.session_state.user_info['rol'].capitalize()}")
-    if st.button("🚪 Cerrar Sesión", type="secondary", use_container_width=True):
-        logout()
-    st.markdown("---")
+    pg = st.navigation({
+        "Principal": [pg_dashboard],
+        "Ventas y Clientes": [pg_clientes, pg_cotizaciones, pg_obras, pg_contratos],
+        "Logística e Inventario": [pg_productos, pg_inventario, pg_hojas_salida, pg_hojas_entrada],
+        "Operaciones": [pg_fabricacion, pg_cambios_of],
+        "Finanzas": [pg_renovaciones, pg_anticipos]
+    })
 
-# Navigation setup
-pg_dashboard = st.Page(show_dashboard, title="Dashboard", icon=":material/dashboard:", default=True)
-pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon=":material/group:")
-pg_productos = st.Page("pages/02_productos.py", title="Productos", icon=":material/inventory_2:")
-pg_cotizaciones = st.Page("pages/03_cotizaciones.py", title="Cotizaciones", icon=":material/request_quote:")
-pg_obras = st.Page("pages/04_obras.py", title="Obras", icon=":material/construction:")
-pg_contratos = st.Page("pages/05_contratos.py", title="Contratos", icon=":material/description:")
-pg_hojas_salida = st.Page("pages/06_hojas_salida.py", title="Hojas de Salida", icon=":material/local_shipping:")
-pg_hojas_entrada = st.Page("pages/07_hojas_entrada.py", title="Hojas de Entrada", icon=":material/input:")
-pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon=":material/precision_manufacturing:")
-pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon=":material/autorenew:")
-pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon=":material/payments:")
-pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon=":material/inventory:")
-pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon=":material/published_with_changes:")
+pg.run()
+trada = st.Page("pages/07_hojas_entrada.py", title="Hojas De Entrada", icon="📥")
+pg_fabricacion = st.Page("pages/08_fabricacion.py", title="Fabricación", icon="🔧")
+pg_renovaciones = st.Page("pages/09_renovaciones.py", title="Renovaciones", icon="🔄")
+pg_anticipos = st.Page("pages/10_anticipos.py", title="Anticipos", icon="💰")
+pg_inventario = st.Page("pages/11_inventario.py", title="Inventario", icon="📊")
+pg_cambios_of = st.Page("pages/12_cambios_of.py", title="Cambios OF", icon="🔁")
 
 pg = st.navigation([
     pg_dashboard,

@@ -25,9 +25,9 @@ st.title("📦 Control de Inventario")
 st.divider()
 
 tab_bitacora, tab_nuevo_conteo, tab_conteos = st.tabs([
-    "📋 Bitácora de movimientos",
-    "➕ Nuevo conteo físico",
-    "🔍 Conteos realizados"
+    "📋 Bitácora De Movimientos",
+    "➕ Nuevo Conteo Físico",
+    "🔍 Conteos Realizados"
 ])
 
 # ================================================

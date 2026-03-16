@@ -31,8 +31,8 @@ UNIDADES = ['PZA', 'ML', 'M2', 'JGO', 'KIT']
 tab_catalogo, tab_inventario, tab_nuevo, tab_editar, tab_bom = st.tabs([
     "📋 Catálogo",
     "📊 Inventario",
-    "➕ Nuevo producto",
-    "✏️ Editar producto",
+    "➕ Nuevo Producto",
+    "✏️ Editar Producto",
     "🧪 BOM / Recetas"
 ])
 
@@ -108,7 +108,7 @@ with tab_inventario:
         ]
 
         st.dataframe(
-            df.style.applymap(
+            df.style.map(
                 lambda v: 'background-color: #ffe0e0'
                 if isinstance(v, (int, float)) and v < 0 else '',
                 subset=['Disponible']
