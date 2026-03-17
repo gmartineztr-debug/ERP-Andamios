@@ -26,18 +26,74 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Estilos globales: personalizar color de la sidebar
+# Estilos globales: personalizar color de la sidebar, botones e inputs
 st.markdown("""
 <style>
-/* Fondo de la sidebar */
+/* --------------------------------------------------
+   Sidebar: fondo y texto
+   -------------------------------------------------- */
 section[data-testid="stSidebar"] {
-    background-color: #0F172A !important; /* cambia por tu color */
+    background-color: #0F172A !important; /* color de fondo */
 }
 
-/* Texto y enlaces dentro de la sidebar */
 section[data-testid="stSidebar"] * {
-    color: #FFFFFF !important;
+    color: #FFFFFF !important; /* texto en la sidebar */
 }
+
+/* --------------------------------------------------
+   Botones: estilo general y en la sidebar
+   -------------------------------------------------- */
+.stButton > button,
+button[data-testid="stButton"] {
+    background-color: #1F6FEB !important; /* color principal */
+    color: #FFFFFF !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    box-shadow: none !important;
+}
+
+/* Botones en la sidebar (contraste más fuerte) */
+section[data-testid="stSidebar"] .stButton > button {
+    background-color: #0B4F8A !important;
+}
+
+/* Hover / enfoque para botones */
+.stButton > button:hover,
+button[data-testid="stButton"]:hover {
+    filter: brightness(0.95) !important;
+}
+
+/* --------------------------------------------------
+   Campos de entrada (input, textarea, select)
+   -------------------------------------------------- */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+textarea,
+select {
+    background-color: #F1F5F9 !important; /* fondo del campo */
+    color: #0F172A !important; /* color del texto */
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 6px !important;
+    padding: 6px 8px !important;
+}
+
+/* Campos en la sidebar con mayor contraste */
+section[data-testid="stSidebar"] input,
+section[data-testid="stSidebar"] textarea,
+section[data-testid="stSidebar"] select {
+    background-color: #0F172A !important;
+    color: #FFFFFF !important;
+    border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* Focus visible para inputs */
+input:focus, textarea:focus, select:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 4px rgba(31,111,235,0.12) !important;
+}
+
 </style>
 """, unsafe_allow_html=True)
 
