@@ -118,6 +118,52 @@ with tab_bitacora:
             if v < 0: return 'color: #EF4444; font-weight: 500;'
             return 'color: #94A3B8;'
 
+        # Preparar DataFrame para mostrar/exportar: construir `df_show` de forma segura
+        df_show = pd.DataFrame()
+
+        # Columnas candidatas (nombre en datos -> título de columna)
+        cols_map = [
+            ('fecha', 'Fecha'),
+            ('codigo', 'Código'),
+            ('producto_nombre', 'Producto'),
+            ('nombre', 'Producto'),
+            ('tipo_movimiento', 'Tipo'),
+            ('referencia_folio', 'Referencia'),
+            ('usuario', 'Usuario')
+        ]
+
+        for src, title in cols_map:
+            if src in df.columns and title not in df_show.columns:
+                df_show[title] = df[src]
+
+        # Calcular deltas (si existen campos antes/despues)
+        if 'disponible_despues' in df.columns and 'disponible_antes' in df.columns:
+            df_show['Δ Disponible'] = df['disponible_despues'] - df['disponible_antes']
+        else:
+            df_show['Δ Disponible'] = 0
+
+        if 'rentado_despues' in df.columns and 'rentado_antes' in df.columns:
+            df_show['Δ Rentado'] = df['rentado_despues'] - df['rentado_antes']
+        else:
+            df_show['Δ Rentado'] = 0
+
+        if 'mantenimiento_despues' in df.columns and 'mantenimiento_antes' in df.columns:
+            df_show['Δ Mantenimiento'] = df['mantenimiento_despues'] - df['mantenimiento_antes']
+        else:
+            df_show['Δ Mantenimiento'] = 0
+
+        if 'chatarra_despues' in df.columns and 'chatarra_antes' in df.columns:
+            df_show['Δ Chatarra'] = df['chatarra_despues'] - df['chatarra_antes']
+        else:
+            df_show['Δ Chatarra'] = 0
+
+        # Si no hay columnas de producto, intentar usar 'producto_id'
+        if 'Producto' not in df_show.columns and 'producto_id' in df.columns:
+            df_show['Producto'] = df['producto_id']
+
+        # Rellenar campos vacíos con guión para presentación
+        df_show = df_show.fillna('—')
+
         st.dataframe(
             df_show.style.applymap(style_delta, subset=['Δ Disponible', 'Δ Rentado', 'Δ Mantenimiento', 'Δ Chatarra']),
             use_container_width=True, 
