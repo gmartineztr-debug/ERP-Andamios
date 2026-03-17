@@ -26,6 +26,21 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Estilos globales: personalizar color de la sidebar
+st.markdown("""
+<style>
+/* Fondo de la sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #0F172A !important; /* cambia por tu color */
+}
+
+/* Texto y enlaces dentro de la sidebar */
+section[data-testid="stSidebar"] * {
+    color: #FFFFFF !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # 2. Definición de páginas (definirlas aquí para que estén disponibles en el dashboard)
 pg_clientes = st.Page("pages/01_clientes.py", title="Clientes", icon=":material/groups:")
 pg_productos = st.Page("pages/02_productos.py", title="Productos", icon=":material/inventory_2:")
