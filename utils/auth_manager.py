@@ -20,24 +20,25 @@ def login_screen():
     """Muestra la interfaz de login"""
     st.markdown("""
         <style>
-        .login-container {
-            max-width: 420px;
-            margin: 80px auto;
-            padding: 1.6rem 1.8rem;
-            border-radius: 10px;
-            background-color: #0F172A; /* fondo acorde al sistema */
-            color: #FFFFFF;
-            box-shadow: 0 6px 18px rgba(2,6,23,0.45);
-        }
-        .login-container h1, .login-container .stMarkdown, .login-container .stText {
-            color: #FFFFFF;
+        /* Aplicar fondo general y colores para Streamlit (seletores con data-testid) */
+        [data-testid="stAppViewContainer"] {
+            background-color: #0F172A !important;
         }
 
-        /* Inputs dentro del login: fondo claro para contraste */
-        .login-container input[type="text"],
-        .login-container input[type="password"],
-        .login-container textarea,
-        .login-container select {
+        /* Texto principal en blanco */
+        [data-testid="stAppViewContainer"] .stText, 
+        [data-testid="stAppViewContainer"] h1, 
+        [data-testid="stAppViewContainer"] h2,
+        [data-testid="stAppViewContainer"] h3,
+        [data-testid="stAppViewContainer"] p {
+            color: #FFFFFF !important;
+        }
+
+        /* Inputs (text, password, textarea) - targets by data-testid */
+        div[data-testid="stTextInput"] input,
+        div[data-testid="stPasswordInput"] input,
+        div[data-testid="stTextArea"] textarea,
+        div[data-testid="stNumberInput"] input {
             background-color: #F1F5F9 !important;
             color: #0F172A !important;
             border: 1px solid #E2E8F0 !important;
@@ -45,9 +46,8 @@ def login_screen():
             padding: 6px 8px !important;
         }
 
-        /* Botón principal de login */
-        .login-container .stButton > button,
-        .login-container button[data-testid="stButton"] {
+        /* Botón principal */
+        button[data-testid="stButton"] {
             background-color: #1F6FEB !important;
             color: #FFFFFF !important;
             border-radius: 8px !important;
@@ -55,16 +55,12 @@ def login_screen():
             padding: 8px 12px !important;
         }
 
-        .login-container .stButton > button:hover,
-        .login-container button[data-testid="stButton"]:hover {
+        button[data-testid="stButton"]:hover {
             filter: brightness(0.95) !important;
         }
 
         </style>
     """, unsafe_allow_html=True)
-
-    # Abrir wrapper visual para el formulario (permite que la caja reciba estilos)
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
     with st.container():
         st.title("🔐 Acceso al ERP")
         st.info("Ingresa tus credenciales para continuar.")
@@ -87,8 +83,8 @@ def login_screen():
                     else:
                         st.error("Usuario o contraseña incorrectos.")
 
-    # Cerrar wrapper visual
-    st.markdown('</div>', unsafe_allow_html=True)
+    # No usamos wrapper HTML; Streamlit renderiza widgets fuera del HTML inyectado.
+    # Por eso no es necesario cerrar un contenedor HTML aquí.
 
 def logout():
     """Cierra la sesión actual"""
