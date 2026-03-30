@@ -15,8 +15,14 @@ from utils.database import (
     get_contratos_con_saldo,
     actualizar_estatus_anticipo
 )
+from utils.logger import logger
 
-
+# Validar permisos
+roles_permitidos = ['admin', 'gerencia']
+if st.session_state.get('rol', 'usuario').lower() not in roles_permitidos:
+    st.error(f"🚫 **No tienes acceso a esta sección.**\nRoles requeridos: {', '.join(roles_permitidos)}")
+    logger.warning(f"ACCESO_DENEGADO: {st.session_state.get('usuario')} intentó acceder a Anticipos")
+    st.stop()
 
 st.title(":material/payments: Anticipos y Pagos")
 st.divider()

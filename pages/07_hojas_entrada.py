@@ -21,8 +21,14 @@ from utils.database import (
     crear_contrato,
     crear_contrato_item
 )
+from utils.logger import logger
 
-
+# Validar permisos
+roles_permitidos = ['admin', 'logistica']
+if st.session_state.get('rol', 'usuario').lower() not in roles_permitidos:
+    st.error(f"🚫 **No tienes acceso a esta sección.**\nRoles requeridos: {', '.join(roles_permitidos)}")
+    logger.warning(f"ACCESO_DENEGADO: {st.session_state.get('usuario')} intentó acceder a Hojas de Entrada")
+    st.stop()
 
 st.title(":material/move_to_inbox: Hojas de Entrada")
 st.divider()

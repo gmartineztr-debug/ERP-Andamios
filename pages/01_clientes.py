@@ -9,10 +9,16 @@ from utils.database import (
     actualizar_cliente
 )
 from utils.reporting import export_to_csv, export_to_pdf
+from utils.logger import log_action, logger
 import datetime
 from datetime import datetime, date
 
-
+# Validar permisos
+roles_permitidos = ['admin', 'ventas', 'gerencia']
+if st.session_state.get('rol', 'usuario').lower() not in roles_permitidos:
+    st.error(f"🚫 **No tienes acceso a esta sección.**\nRoles requeridos: {', '.join(roles_permitidos)}")
+    logger.warning(f"ACCESO_DENEGADO: {st.session_state.get('usuario')} intentó acceder a Clientes")
+    st.stop()
 
 st.title(":material/groups: Clientes")
 st.divider()

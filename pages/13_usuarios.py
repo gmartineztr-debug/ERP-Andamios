@@ -9,11 +9,13 @@ from utils.database import (
     actualizar_rol_usuario
 )
 from utils.auth_manager import check_permission
+from utils.logger import logger
 from datetime import datetime
 
 # Verificar permisos (solo admin)
 if not check_permission('admin'):
     st.error("🚫 No tienes permisos para acceder a esta sección.")
+    logger.warning(f"ACCESO_DENEGADO: {st.session_state.get('usuario')} intentó acceder a Usuarios")
     st.stop()
 
 st.title(":material/person_add: Gestión de Usuarios")

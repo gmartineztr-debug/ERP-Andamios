@@ -1,13 +1,22 @@
 from datetime import date
 import streamlit as st
+from typing import List, Optional, Dict, Tuple
 from .connection import get_cursor
 
 # ================================================
 # CLIENTES
 # ================================================
 
-def get_clientes(solo_activos=True):
-    """Retorna lista de clientes"""
+def get_clientes(solo_activos: bool = True) -> List[Dict]:
+    """
+    Obtiene todos los clientes del sistema.
+    
+    Args:
+        solo_activos: Si True, retorna solo clientes con activo=True.
+        
+    Returns:
+        list[dict]: Lista de diccionarios con datos de clientes.
+    """
     with get_cursor() as (cur, conn):
         query = "SELECT * FROM crm_clientes"
         if solo_activos:
@@ -17,15 +26,31 @@ def get_clientes(solo_activos=True):
         res = cur.fetchall()
         return res if res is not None else []
 
-def get_cliente_by_id(cliente_id):
-    """Retorna un cliente por su ID"""
+def get_cliente_by_id(cliente_id: int) -> Optional[Dict]:
+    """
+    Obtiene un cliente específico por su ID.
+    
+    Args:
+        cliente_id: ID del cliente
+        
+    Returns:
+        dict | None: Datos del cliente o None si no existe
+    """
     with get_cursor() as (cur, conn):
         cur.execute("SELECT * FROM crm_clientes WHERE id = %s", (cliente_id,))
         res = cur.fetchone()
         return res if res is not None else {}
 
-def crear_cliente(datos):
-    """Crea un nuevo cliente"""
+def crear_cliente(datos: Dict) -> int:
+    """
+    Crea un nuevo cliente en el sistema.
+    
+    Args:
+        datos: Diccionario con campos del cliente (razon_social, rfc, etc.)
+        
+    Returns:
+        int: ID del cliente creado
+    """
     with get_cursor() as (cur, conn):
         cur.execute("""
             INSERT INTO crm_clientes
@@ -41,8 +66,14 @@ def crear_cliente(datos):
         conn.commit()
         return nuevo_id
 
-def actualizar_cliente(cliente_id, datos):
-    """Actualiza un cliente existente"""
+def actualizar_cliente(cliente_id: int, datos: Dict) -> None:
+    """
+    Actualiza los datos de un cliente existente.
+    
+    Args:
+        cliente_id: ID del cliente a actualizar
+        datos: Diccionario con los nuevos valores
+    """
     with get_cursor() as (cur, conn):
         cur.execute("""
             UPDATE crm_clientes SET

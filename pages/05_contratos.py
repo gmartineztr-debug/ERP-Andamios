@@ -4,6 +4,15 @@
 import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
+from utils.logger import log_action, logger
+
+# Validar permisos
+roles_permitidos = ['admin', 'ventas']
+if st.session_state.get('rol', 'usuario').lower() not in roles_permitidos:
+    st.error(f"🚫 **No tienes acceso a esta sección.**\nRoles requeridos: {', '.join(roles_permitidos)}")
+    logger.warning(f"ACCESO_DENEGADO: {st.session_state.get('usuario')} intentó acceder a Contratos")
+    st.stop()
+
 from utils.database import (
     get_clientes,
     get_productos,
@@ -202,6 +211,10 @@ with tab_nuevo:
     # Seleccionar cotización aprobada
     cotizaciones = get_cotizaciones_aprobadas()
 
+    # Asegurar variables definidas en todos los caminos
+    cot = None
+    cot_items = []
+
     if not cotizaciones:
         st.warning("No hay cotizaciones aprobadas. Aprueba una cotización primero.")
     else:
@@ -211,9 +224,16 @@ with tab_nuevo:
         }
         cot_sel = st.selectbox("Selecciona cotización aprobada *", list(opciones_cot.keys()))
         cot_id  = opciones_cot[cot_sel]
-        cot, cot_items = get_cotizacion_detalle(cot_id)
+        # Inicializar por defecto para evitar referencias no definidas
+        cot = None
+        cot_items = []
+        try:
+            cot, cot_items = get_cotizacion_detalle(cot_id)
+        except Exception:
+            cot = None
 
-    if cot:
+    # Comprobar explícitamente None para evitar errores de ambigüedad
+    if cot is not None:
         # Mostrar resumen cotización
         with st.expander(":material/list_alt: Ver resumen de cotización", expanded=True):
             col1, col2, col3 = st.columns(3)
