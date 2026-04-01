@@ -201,6 +201,27 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
+    
+    @field_validator('password')
+    @classmethod
+    def validar_password(cls, v: str) -> str:
+        """Valida que la contraseña cumpla requisitos de seguridad"""
+        errores = []
+        
+        if len(v) < 8:
+            errores.append("mínimo 8 caracteres")
+        if not any(c.isupper() for c in v):
+            errores.append("al menos 1 mayúscula")
+        if not any(c.islower() for c in v):
+            errores.append("al menos 1 minúscula")
+        if not any(c.isdigit() for c in v):
+            errores.append("al menos 1 número")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+            errores.append("al menos 1 carácter especial: !@#$%^&*()_+-=[]{}|;:,.<>?")
+        
+        if errores:
+            raise ValueError(f"Contraseña debe tener: {', '.join(errores)}")
+        return v
 
 
 class UsuarioUpdate(BaseModel):
@@ -208,3 +229,78 @@ class UsuarioUpdate(BaseModel):
     email: Optional[EmailStr] = None
     rol: Optional[str] = None
     activo: Optional[bool] = None
+
+
+# ================================================
+# CONTRASEÑA
+# ================================================
+
+class PasswordChange(BaseModel):
+    """Esquema para cambiar contraseña"""
+    password_actual: str = Field(..., min_length=1)
+    password_nueva: str = Field(..., min_length=8)
+    
+    @field_validator('password_nueva')
+    @classmethod
+    def validar_password_nueva(cls, v: str) -> str:
+        """Valida que la nueva contraseña cumpla requisitos de seguridad"""
+        errores = []
+        
+        if len(v) < 8:
+            errores.append("mínimo 8 caracteres")
+        if not any(c.isupper() for c in v):
+            errores.append("al menos 1 mayúscula")
+        if not any(c.islower() for c in v):
+            errores.append("al menos 1 minúscula")
+        if not any(c.isdigit() for c in v):
+            errores.append("al menos 1 número")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+            errores.append("al menos 1 carácter especial: !@#$%^&*()_+-=[]{}|;:,.<>?")
+        
+        if errores:
+            raise ValueError(f"Contraseña debe tener: {', '.join(errores)}")
+        return v
+
+
+class PasswordReset(BaseModel):
+    """Esquema para resetear contraseña (admin only)"""
+    password_nueva: str = Field(..., min_length=8)
+    
+    @field_validator('password_nueva')
+    @classmethod
+    def validar_password(cls, v: str) -> str:
+        """Valida que la contraseña cumpla requisitos de seguridad"""
+        errores = []
+        
+        if len(v) < 8:
+            errores.append("mínimo 8 caracteres")
+        if not any(c.isupper() for c in v):
+            errores.append("al menos 1 mayúscula")
+        if not any(c.islower() for c in v):
+            errores.append("al menos 1 minúscula")
+        if not any(c.isdigit() for c in v):
+            errores.append("al menos 1 número")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?" for c in v):
+            errores.append("al menos 1 carácter especial: !@#$%^&*()_+-=[]{}|;:,.<>?")
+        
+        if errores:
+            raise ValueError(f"Contraseña debe tener: {', '.join(errores)}")
+        return v
+
+
+def get_password_requirements() -> dict:
+    """
+    Retorna los requisitos de contraseña en formato amigable.
+    Útil para mostrar en UI.
+    """
+    return {
+        "minimo": 8,
+        "requisitos": [
+            "✓ Mínimo 8 caracteres",
+            "✓ Al menos 1 mayúscula (A-Z)",
+            "✓ Al menos 1 minúscula (a-z)",
+            "✓ Al menos 1 número (0-9)",
+            "✓ Al menos 1 carácter especial: !@#$%^&*()"
+        ],
+        "especiales_permitidos": "!@#$%^&*()_+-=[]{}|;:,.<>?"
+    }

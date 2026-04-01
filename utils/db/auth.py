@@ -42,8 +42,9 @@ def verify_password(password: str, password_hash: str) -> bool:
 # ================================================
 
 def create_auth_table_if_not_exists() -> None:
-    """Crea la tabla de usuarios si no existe"""
+    """Crea la tabla de usuarios si no existe y agrega columnas faltantes"""
     with get_cursor() as (cur, conn):
+        # Crear tabla si no existe
         cur.execute("""
             CREATE TABLE IF NOT EXISTS sys_usuarios (
                 id SERIAL PRIMARY KEY,
@@ -57,6 +58,26 @@ def create_auth_table_if_not_exists() -> None:
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        
+        # Agregar columnas faltantes si existen antes de crear tabla
+        # (para compatibilidad con tablas antiguas)
+        try:
+            cur.execute("""
+                ALTER TABLE sys_usuarios 
+                ADD COLUMN IF NOT EXISTS email TEXT UNIQUE
+            """)
+            cur.execute("""
+                ALTER TABLE sys_usuarios 
+                ADD COLUMN IF NOT EXISTS nombre TEXT
+            """)
+            cur.execute("""
+                ALTER TABLE sys_usuarios 
+                ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            """)
+        except Exception:
+            # Si falla, probablemente es porque las columnas ya existen
+            pass
+        
         conn.commit()
 
 
@@ -132,11 +153,20 @@ def get_usuarios() -> List[Dict]:
         Lista de diccionarios con datos de usuarios
     """
     with get_cursor() as (cur, conn):
-        cur.execute("""
-            SELECT id, username, nombre, email, rol, activo, created_at 
-            FROM sys_usuarios 
-            ORDER BY created_at DESC
-        """)
+        try:
+            # Intentar con email (nueva versión de tabla)
+            cur.execute("""
+                SELECT id, username, nombre, email, rol, activo, created_at 
+                FROM sys_usuarios 
+                ORDER BY created_at DESC
+            """)
+        except Exception:
+            # Si falla, tabla antigua sin email (fallback)
+            cur.execute("""
+                SELECT id, username, nombre, rol, activo 
+                FROM sys_usuarios 
+                ORDER BY id DESC
+            """)
         return cur.fetchall() or []
 
 
@@ -217,3 +247,62 @@ def cambiar_password(usuario_id: int, password_actual: str, password_nueva: str)
         """, (nuevo_hash, usuario_id))
         conn.commit()
         return True
+
+
+def cambiar_password_admin(usuario_id: int, password_nueva: str) -> bool:
+    """
+    Cambia la contraseña de un usuario sin validar la anterior (solo admin).
+    
+    Args:
+        usuario_id: ID del usuario
+        password_nueva: Nueva contraseña en texto plano
+        
+    Returns:
+        True si el cambio fue exitoso
+    """
+    nuevo_hash = hash_password(password_nueva)
+    with get_cursor() as (cur, conn):
+        cur.execute("""
+            UPDATE sys_usuarios 
+            SET password_hash = %s, updated_at = NOW()
+            WHERE id = %s
+        """, (nuevo_hash, usuario_id))
+        conn.commit()
+        return True
+
+
+def eliminar_usuario(usuario_id: int) -> bool:
+    """
+    Elimina un usuario del sistema.
+    
+    Args:
+        usuario_id: ID del usuario a eliminar
+        
+    Returns:
+        True si la eliminación fue exitosa
+    """
+    with get_cursor() as (cur, conn):
+        cur.execute("""
+            DELETE FROM sys_usuarios 
+            WHERE id = %s
+        """, (usuario_id,))
+        conn.commit()
+        return True
+
+
+def get_usuario_por_id(usuario_id: int) -> Optional[Dict]:
+    """
+    Obtiene un usuario por su ID.
+    
+    Args:
+        usuario_id: ID del usuario
+        
+    Returns:
+        Diccionario con datos del usuario o None
+    """
+    with get_cursor() as (cur, conn):
+        cur.execute(
+            "SELECT * FROM sys_usuarios WHERE id = %s",
+            (usuario_id,)
+        )
+        return cur.fetchone()

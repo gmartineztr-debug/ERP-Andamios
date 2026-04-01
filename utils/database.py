@@ -57,5 +57,6 @@ from .db.dashboard import (
 from .db.auth import (
     create_auth_table_if_not_exists, get_usuario_por_username,
     crear_usuario_inicial, validar_credenciales,
-    get_usuarios, crear_usuario, actualizar_rol_usuario
+    get_usuarios, crear_usuario, actualizar_rol_usuario,
+    cambiar_password, cambiar_password_admin, eliminar_usuario, get_usuario_por_id
 )

@@ -26,6 +26,8 @@ def init_auth() -> None:
         st.session_state.usuario_id = None
     if 'rol' not in st.session_state:
         st.session_state.rol = 'usuario'
+    if 'user_info' not in st.session_state:
+        st.session_state.user_info = {}
     
     # Asegurar tabla de usuarios existe
     try:
@@ -100,6 +102,12 @@ def login_screen() -> None:
                     st.session_state.usuario = user['username']
                     st.session_state.usuario_id = user['id']
                     st.session_state.rol = user['rol']
+                    st.session_state.user_info = {
+                        'nombre': user.get('nombre', user['username']),
+                        'rol': user['rol'],
+                        'email': user.get('email', ''),
+                        'id': user['id']
+                    }
                     
                     log_login(username, True)
                     
@@ -122,6 +130,7 @@ def logout() -> None:
     st.session_state.usuario = None
     st.session_state.usuario_id = None
     st.session_state.rol = 'usuario'
+    st.session_state.user_info = {}
     st.rerun()
 
 
